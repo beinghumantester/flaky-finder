@@ -1,4 +1,9 @@
-export type Verdict = "LIKELY_FLAKY" | "LIKELY_REAL_BUG" | "UNVERIFIED";
+// ENVIRONMENT_SIGNAL_DETECTED means exactly what it says: a known non-product
+// failure signature was found in the text. It does NOT mean "proven flaky" —
+// a single log can never establish that a failure is intermittent, only that
+// it carries a signature commonly associated with non-determinism. Likewise
+// SUSPECTED_REGRESSION is a lead for a human, not a confirmed diagnosis.
+export type Verdict = "ENVIRONMENT_SIGNAL_DETECTED" | "SUSPECTED_REGRESSION" | "UNVERIFIED";
 export type Confidence = "high" | "medium" | "low" | "none";
 export type Source = "rule" | "llm" | "none";
 

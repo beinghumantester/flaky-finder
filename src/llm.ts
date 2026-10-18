@@ -12,10 +12,10 @@ export function hasLlmFallback(): boolean {
 }
 
 const SYSTEM_PROMPT = `You classify a SINGLE CI test failure. You have exactly one run of evidence, so:
-- Only say LIKELY_FLAKY if the error text itself names an environment/timing/non-determinism cause (network, timeout, race, randomness, shared state, date/clock).
-- Only say LIKELY_REAL_BUG if the failure is a deterministic logic mismatch with NO environment/timing signal at all (e.g. a wrong computed value with no network, timing or ordering involved).
+- Say ENVIRONMENT_SIGNAL_DETECTED only if the error text itself names a non-product cause (network, timeout, race, randomness, shared state, date/clock). This means "a known non-product signature is present," NOT "this test is confirmed flaky" — a single log can never prove intermittency, so do not phrase your explanation as proof.
+- Say SUSPECTED_REGRESSION only if the failure is a deterministic logic mismatch with NO environment/timing signal at all (e.g. a wrong computed value with no network, timing or ordering involved). This is a lead for a human, not a confirmed bug — say so.
 - Otherwise say UNVERIFIED — a single run is not enough evidence to decide, and that is a valid, honest answer.
-Reply with ONLY compact JSON: {"verdict":"LIKELY_FLAKY"|"LIKELY_REAL_BUG"|"UNVERIFIED","confidence":"low"|"medium","explanation":"<one sentence, cite the specific text that led you there>"}`;
+Reply with ONLY compact JSON: {"verdict":"ENVIRONMENT_SIGNAL_DETECTED"|"SUSPECTED_REGRESSION"|"UNVERIFIED","confidence":"low"|"medium","explanation":"<one sentence, cite the specific text that led you there, and do not claim more than that text establishes>"}`;
 
 export async function classifyWithLlm(failure: Failure): Promise<AnalysisResult> {
   if (!API_KEY) {
@@ -46,12 +46,19 @@ export async function classifyWithLlm(failure: Failure): Promise<AnalysisResult>
     const data = (await res.json()) as any;
     const content: string = data.choices?.[0]?.message?.content ?? "";
     const parsed = JSON.parse(content.trim());
-    const verdict = parsed.verdict === "LIKELY_FLAKY" || parsed.verdict === "LIKELY_REAL_BUG" ? parsed.verdict : "UNVERIFIED";
+    const verdict =
+      parsed.verdict === "ENVIRONMENT_SIGNAL_DETECTED" || parsed.verdict === "SUSPECTED_REGRESSION" ? parsed.verdict : "UNVERIFIED";
+    // SUSPECTED_REGRESSION is always capped at "low" confidence, no matter what the
+    // model claims — a model asserting otherwise would be claiming more certainty
+    // than one run of evidence can support, which is exactly the overclaim this
+    // tool exists to avoid. Only ENVIRONMENT_SIGNAL_DETECTED (identifying a known
+    // signature, not diagnosing intermittency) may reach "medium".
+    const confidence = verdict === "SUSPECTED_REGRESSION" ? "low" : parsed.confidence === "medium" ? "medium" : "low";
     return {
       testName: failure.testName,
       framework: failure.framework,
       verdict,
-      confidence: parsed.confidence === "medium" ? "medium" : "low",
+      confidence,
       explanation: typeof parsed.explanation === "string" ? parsed.explanation : "LLM gave no explanation.",
       source: "llm",
     };

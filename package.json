@@ -1,7 +1,7 @@
 {
   "name": "flaky-finder",
   "version": "0.1.0",
-  "description": "Classifies CI test failures as LIKELY_FLAKY, LIKELY_REAL_BUG, or UNVERIFIED using an auditable rule engine first, with an optional open-weight-model fallback for the residual — never a silent guess.",
+  "description": "Classifies CI test failures as ENVIRONMENT_SIGNAL_DETECTED, SUSPECTED_REGRESSION, or UNVERIFIED using an auditable rule engine first, with an optional open-weight-model fallback for the residual — never claiming more than a single log can establish.",
   "type": "module",
   "bin": {
     "flaky-finder": "./dist/cli.js"

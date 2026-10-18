@@ -6,8 +6,8 @@ import { classifyWithLlm, hasLlmFallback } from "./llm.js";
 import type { AnalysisResult } from "./types.js";
 
 const VERDICT_ICON: Record<AnalysisResult["verdict"], string> = {
-  LIKELY_FLAKY: "🟡",
-  LIKELY_REAL_BUG: "🔴",
+  ENVIRONMENT_SIGNAL_DETECTED: "🟡",
+  SUSPECTED_REGRESSION: "🔴",
   UNVERIFIED: "⚪",
 };
 
