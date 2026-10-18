@@ -1,0 +1,20 @@
+============================= FAILURES ==============================
+_______________________ test_fetch_user_retries _______________________
+
+    def test_fetch_user_retries():
+        client = APIClient()
+>       response = client.get("/users/42")
+E       requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+
+tests/test_api.py:34: ConnectionError
+_______________________ test_discount_calculation _______________________
+
+    def test_discount_calculation():
+        cart = Cart(items=[Item(price=100, qty=2)])
+>       assert cart.total_with_discount(code="SAVE10") == 180
+E       assert 200 == 180
+
+tests/test_cart.py:58: AssertionError
+======================= short test summary info ======================
+FAILED tests/test_api.py::test_fetch_user_retries - requests.exceptions.ConnectionError
+FAILED tests/test_cart.py::test_discount_calculation - assert 200 == 180
