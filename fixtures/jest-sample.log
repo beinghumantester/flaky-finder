@@ -1,0 +1,21 @@
+FAIL src/cart.test.js
+  Cart
+    ● Cart › retries fetch on reset connection
+
+      ECONNRESET: socket hang up
+
+        at TCP.onStreamRead (node:internal/stream_base_commons:218:20)
+
+    ● Cart › applies discount code
+
+      expect(received).toBe(expected)
+
+      Expected: 90
+      Received: 100
+
+        12 |   await sleep(50)
+        13 |   const total = cart.getTotal()
+      > 14 |   expect(total).toBe(90)
+           |                 ^
+
+        at Object.<anonymous> (src/cart.test.js:14:19)
