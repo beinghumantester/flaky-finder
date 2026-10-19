@@ -57,7 +57,7 @@ on every push) is the closest thing to a live demo — it's a CLI tool, so
 
 ## Code
 
-**<REPO_URL>**
+**https://github.com/beinghumantester/flaky-finder**
 
 ## How I Built It
 
