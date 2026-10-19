@@ -33,7 +33,13 @@ async function main() {
   }
 
   for (const r of results) {
-    console.log(`${VERDICT_ICON[r.verdict]} ${r.verdict}  (${r.confidence} confidence, via ${r.source})`);
+    // Rule matches are plain string/regex presence — there's no statistical
+    // score behind them, so the display never calls that "confidence"
+    // (exact/strong/weak match-strength instead). Only the LLM step, which
+    // self-reports an actual confidence in its own classification, uses
+    // that word.
+    const strengthOrConfidence = r.source === "rule" ? `signature-match: ${r.confidence}` : `${r.confidence} verdict confidence`;
+    console.log(`${VERDICT_ICON[r.verdict]} ${r.verdict}  (${strengthOrConfidence}, via ${r.source})`);
     console.log(`   test: ${r.testName}`);
     if (r.evidenceLine) console.log(`   evidence: ${r.evidenceLine}`);
     console.log(`   why: ${r.explanation}\n`);
