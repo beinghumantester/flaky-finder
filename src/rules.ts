@@ -1,5 +1,13 @@
 import type { Rule, Failure, AnalysisResult } from "./types.js";
 
+// Bump this whenever a rule's pattern, verdict, or matchStrength changes.
+// History storage (history-ingest.ts) records this alongside every stored
+// failure signature, so a later change to the ruleset can be told apart from
+// a change in actually-observed test behavior — re-classifying old evidence
+// with a new ruleset version is a deliberate, visible action, not something
+// that happens silently by re-running history analysis.
+export const RULESET_VERSION = 1;
+
 // Every rule fires on a SPECIFIC, well-known non-product failure signature —
 // never on a bare assertion mismatch. A rule that fired on "expected 1 to
 // equal 2" would just be guessing with extra steps.

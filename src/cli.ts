@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { parseLog } from "./parser.js";
 import { classifyWithRules } from "./rules.js";
 import { classifyWithLlm, hasLlmFallback } from "./llm.js";
+import { runHistoryCommand } from "./history-cli.js";
 import type { AnalysisResult } from "./types.js";
 
 const VERDICT_ICON: Record<AnalysisResult["verdict"], string> = {
@@ -12,9 +13,20 @@ const VERDICT_ICON: Record<AnalysisResult["verdict"], string> = {
 };
 
 async function main() {
-  const file = process.argv[2];
+  const [first, ...rest] = process.argv.slice(2);
+
+  // "history" is a reserved subcommand name, distinct from analyzing a log
+  // file — a CI log file named literally "history" would need to be passed
+  // as ./history to reach the single-log path below.
+  if (first === "history") {
+    runHistoryCommand(rest);
+    return;
+  }
+
+  const file = first;
   if (!file) {
     console.error("Usage: flaky-finder analyze <ci-log-file>");
+    console.error("       flaky-finder history <ingest|show|report> ...");
     process.exit(1);
   }
 
