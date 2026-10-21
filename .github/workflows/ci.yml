@@ -13,8 +13,13 @@ jobs:
         with:
           node-version: "22"
       - run: npm install
-      - run: npx tsc -p tsconfig.json --noEmit
+      - run: npm run typecheck
       - run: npm test
       - run: npm run cli -- fixtures/pytest-sample.log
       - run: npm run cli -- fixtures/jest-sample.log
       - run: npm run cli -- fixtures/playwright-sample.log
+      - name: history tracking smoke test (throwaway db, not persisted between jobs)
+        run: |
+          npm run cli -- history ingest fixtures/junit-sample.xml --commit "$GITHUB_SHA" --run-id "ci-$GITHUB_RUN_ID" --framework pytest --db /tmp/flaky-finder-history.db
+          npm run cli -- history show test_fetch_user_retries --db /tmp/flaky-finder-history.db
+          npm run cli -- history report --db /tmp/flaky-finder-history.db
