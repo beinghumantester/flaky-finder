@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuite name="pytest" tests="3" failures="1" skipped="1">
+  <testcase classname="tests.test_api" name="test_fetch_user_retries" time="0.142">
+    <failure message="ConnectionError">E       requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))</failure>
+  </testcase>
+  <testcase classname="tests.test_cart" name="test_discount_calculation" time="0.031" />
+  <testcase classname="tests.test_billing" name="test_quarterly_invoice" time="0.0">
+    <skipped message="requires network access" />
+  </testcase>
+</testsuite>

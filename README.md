@@ -150,10 +150,12 @@ Stated plainly, because the whole point of this project is not overclaiming:
   renders the awaited element produce the *exact same error text*. The rule
   engine reports the signature either way and says so explicitly — it does
   not and cannot resolve which one happened.
-- **No run history.** Every verdict comes from a single log. The strongest
-  real evidence for flakiness — the same test passing and failing on the
-  same commit — is exactly what this tool doesn't have. (That's what
-  FlakyRadar's flip-detection is for.)
+- **Every verdict above still comes from a single log.** Historical
+  tracking (see that section below) adds a separate, evidence-based
+  assessment across multiple ingested runs — but it requires you to ingest
+  JUnit XML reports over time; without that, there is still no run history,
+  and FlakyRadar's flip-detection remains the more complete version of this
+  idea.
 - **Multi-framework support is best-effort.** The parser extracts a test
   name and failure body; it does not yet distinguish a first failure from a
   retry-that-passed, a skip-after-setup-failure, or a failure caused by a
@@ -188,6 +190,212 @@ Stated plainly, because the whole point of this project is not overclaiming:
   running fully local, prefer a non-reasoning model for this specific
   endpoint shape.
 
+## Historical tracking
+
+Everything above comes from a *single* log and can never establish actual
+intermittency — the strongest real evidence for flakiness is the same test
+passing and failing on the same commit, which needs run history. Historical
+tracking adds that, as a **separate axis from the log-level verdict, never a
+replacement for it**. A test can have an `ENVIRONMENT_SIGNAL_DETECTED`
+verdict on one run AND an `INTERMITTENCY_OBSERVED` historical assessment —
+the verdict describes what that one log shows; the assessment describes
+what the recorded run history shows. Never conflate them: `UNVERIFIED` isn't
+"passed," and a signal isn't "flaky," no matter how much history piles up.
+
+### Why JUnit XML, not the failure logs above
+
+A failure log only ever tells you about failures — it cannot tell you a
+test *passed*, so it cannot show a fail→pass pattern. pytest, Jest, and
+Playwright can all emit [JUnit-style XML](https://junit.org/junit5/) test
+reports (`--junitxml`, `--reporters=jest-junit`, `--reporter=junit`), which
+record every test's outcome — passed, failed, or skipped — not just the
+failures. That's the first and only ingestion format for history right now.
+The existing log parsers are unaffected and still do their own job: a
+failed test case's `<failure>` text is run through the same rule engine
+(`classifyWithRules`) used for single-log analysis, so failure evidence in
+history carries the same signature, rule id, and caveats as the CLI's
+normal output — just attached to a specific recorded run instead of printed
+once and discarded.
+
+### Storage
+
+Local SQLite, via Node's built-in `node:sqlite` (experimental as of Node 22
+— you'll see an `ExperimentalWarning` on stderr; that's expected and
+harmless) — no new dependency, no server, no account, consistent with this
+project staying local-first. Default location: `.flaky-finder/history.db`
+(gitignored; override with `--db <path>` on every history command). Two
+logical tables, kept deliberately separate:
+
+- **`test_runs`** — one row per test case per ingested report: test
+  identity, framework, outcome (`PASSED`/`FAILED`/`SKIPPED`/`UNKNOWN`), the
+  run id, commit SHA, and optional environment id.
+- **`failure_evidence`** — for `FAILED` rows only: the rule-engine verdict,
+  rule id, matched evidence line, and the ruleset version that produced
+  them (see `RULESET_VERSION` in `src/rules.ts`). Kept in its own table so
+  that changing a rule later can never be mistaken for a change in actually
+  observed test behavior — the two are tracked independently on purpose.
+
+Duplicate detection is scoped to **`(run_id, report content hash)`, not
+content hash alone.** Re-ingesting the exact same file under the exact same
+`--run-id` is treated as a safe-to-retry duplicate and skipped. Two
+genuinely separate runs that happen to produce byte-identical content (e.g.
+two consecutive all-pass runs on the same commit) are **not** discarded as
+duplicates of each other as long as they're given different `--run-id`
+values — an earlier version of this scoped the uniqueness to content hash
+alone, which would have silently dropped the second of two legitimate runs;
+this was caught in review and fixed before it shipped. If you don't pass
+`--run-id`, the CLI defaults to a timestamp, so every ingestion without an
+explicit id is treated as new — pass a stable id (e.g. your CI run id) if
+you want retry-safe deduplication.
+
+Foreign keys (`test_runs.ingestion_id`, `failure_evidence.test_run_id`) are
+enforced via `PRAGMA foreign_keys = ON`, set explicitly on every connection
+— SQLite does not enforce declared foreign keys by default, so this has to
+be turned on rather than assumed from the schema alone.
+
+One report's worth of writes (the ingestion row, every `test_runs` row,
+every `failure_evidence` row) is wrapped in a single explicit
+`BEGIN`/`COMMIT`-or-`ROLLBACK` transaction — `node:sqlite`'s `DatabaseSync`
+has no built-in `transaction()` helper, unlike some other SQLite drivers, so
+this is done by hand in `history-ingest.ts`. A failure partway through
+(a future bug, an unexpected constraint violation) rolls back everything
+from that ingestion, including rows that had already been written
+successfully earlier in the same call — it never leaves a half-recorded
+report in the database.
+
+Every database is stamped with a schema version (`PRAGMA user_version`),
+checked on open. `openHistoryDb` refuses to open a database stamped with a
+version it doesn't recognize rather than silently reading or writing it as
+if the schema matched — the hook a real migration will need whenever the
+schema actually changes. There is exactly one schema version so far, and no
+migration logic yet, because nothing has needed one yet: this is the first
+schema this project has ever shipped, so there's no earlier real database
+anywhere to migrate from.
+
+### The four historical assessments — what each one does and doesn't mean
+
+These describe **recorded run history**, never a single log, and are
+*in addition to*, not instead of, the verdicts in the section above.
+
+- **`INTERMITTENCY_OBSERVED`** — the same test both passed and failed **on
+  the same commit SHA** across recorded runs. This is real evidence of
+  intermittent outcomes under comparable code. It does **not** establish a
+  root cause, and does **not** rule out environment or infrastructure
+  differences between those specific runs — two runs on the same commit can
+  still differ in runner load, network conditions, or test order.
+- **`FAILURE_REPEATED`** — every recorded run of this test failed. This is
+  consistency across the runs that happened to get recorded, not proof of a
+  product defect — nothing here rules out an environment problem that's
+  simply present on every run seen so far (e.g. a CI runner that's
+  consistently resource-starved).
+- **`PASS_ONLY`** — every recorded run passed. This does not prove the test
+  can never fail; it means no failure has been recorded in the history
+  collected so far. A test with one day of `PASS_ONLY` history and a test
+  with one year of it are reported identically — the assessment carries no
+  notion of "how much" history, only "what kind."
+- **`INSUFFICIENT_HISTORY`** — the most conservative label, and the
+  default when nothing stronger is justified. It covers three distinct
+  situations, deliberately not split into separate categories: (1) fewer
+  than two non-skipped runs are recorded at all; (2) outcomes are mixed
+  (some passed, some failed) but **never on the same commit** — e.g. a test
+  failed on commit A and passed on commit B, which is exactly what a
+  genuine fix looks like, not flakiness; (3) the commit SHA wasn't recorded
+  for the runs being compared, so "same code" was never actually
+  established — two runs with no commit recorded are never treated as "the
+  same commit" just because neither has one.
+
+### Known limitations of test identity
+
+A test's history is tracked under `<framework>::<classname>::<name>`, built
+from whatever JUnit XML gives you — there is no more reliable identifier
+available from that format. Two consequences worth knowing before you rely
+on this:
+
+- **Reports that omit `classname`** (some minimal JUnit writers do) will
+  merge any two tests that share a bare `name`, even if they're in
+  completely unrelated files. This is tested and documented behavior
+  (`tests/history.test.ts`'s "ambiguous test identities" cases), not a bug
+  waiting to be fixed — it's an inherent limit of identifying a test from
+  JUnit XML alone, the same way `parser.ts`'s log parsers only handle the
+  common case for their formats.
+- **`history show <name>`** matches by substring against both the test
+  name and the full test id. If more than one distinct tracked test matches
+  your query (e.g. the same test name under two different classnames), it
+  lists all of them rather than silently guessing which one you meant —
+  pass the full test id shown in that output to pin down one.
+
+### Known limitations of the JUnit XML parser
+
+It's a small regex-based extractor (`src/junit-parser.ts`), not a general
+XML parser — same tradeoff as the log parsers in `parser.ts`. Specifically:
+
+- **No XML namespace support.** A report using `<ns:testsuite>`/
+  `<ns:testcase>` matches none of this parser's patterns and is treated as
+  "not a recognized JUnit report" (`JUnitParseError`) — a loud, defined
+  failure, not silently zero tests found.
+- **A `<testcase>` with both `<failure>` and `<error>` elements** (unusual,
+  but not invalid) uses only the first one in document order as evidence;
+  a warning is recorded, the second is not silently merged or dropped from
+  the warning list.
+- **Duplicate `<testcase>` entries within one report** (e.g. emitted by a
+  rerun/retry plugin) are not deduplicated — each occurrence becomes its
+  own recorded run under the same `run_id`. If their outcomes differ, that
+  can itself produce `INTERMITTENCY_OBSERVED` from a single CI job's
+  internal retries, not from two independent executions — worth knowing if
+  your test runner retries failing tests automatically before writing the
+  report.
+- **A truncated or malformed `<testcase>` block** (an opening tag with no
+  matching close before the file ends) is excluded and flagged with a
+  warning rather than silently miscounted — but this is a heuristic tag
+  count, not real well-formedness validation.
+
+### CLI
+
+```bash
+# Record outcomes from a JUnit XML report (bundled sample: fixtures/junit-sample.xml)
+flaky-finder history ingest fixtures/junit-sample.xml --commit <sha> --run-id <id>
+
+# Inspect one test's recorded history and its current assessment
+flaky-finder history show test_fetch_user_retries
+
+# Every tracked test, most actionable assessments first
+flaky-finder history report
+```
+
+Flags on `ingest`: `--commit <sha>`, `--run-id <id>`, `--environment <id>`,
+`--framework <pytest|jest|playwright|generic>` (JUnit XML doesn't self-
+identify the framework; defaults to `generic`), `--db <path>`. `show` and
+`report` both accept `--db <path>`; `report` also accepts
+`--framework <name>` to filter. Every command explains what to do next when
+no history exists yet, rather than printing an empty table.
+
+### What's explicitly NOT in scope, even now
+
+**No automatic retries and no merge gating.** History ingestion and
+analysis are read-only with respect to your CI pipeline — this tool records
+and reports, it does not re-run tests or block a PR based on what it finds.
+Acting on a historical assessment (retrying a run, gating a merge, auto-
+dismissing a failure) is a policy decision for whoever integrates this, and
+it stays a deliberate choice a team opts into, never a default this project
+ships with.
+
+Also still out of scope: a hosted/shared database (local SQLite only — see
+the "CI runners are ephemeral" note below), and any ingestion format other
+than JUnit XML.
+
+### One CI limitation to plan for
+
+GitHub-hosted runners are ephemeral — a `.flaky-finder/history.db` created
+during one job will not automatically be available in the next one. Running
+`history ingest` inside a single CI job works today (history accumulates
+across local/repeated runs on one machine, e.g. during local development),
+but team-wide history across separate hosted CI jobs needs a persistence
+step this project doesn't ship yet — e.g. downloading and re-uploading the
+db file as a workflow artifact between jobs. That's intentionally left for
+later: get local history right first, add a documented artifact-based step
+when it's actually needed, and only consider a hosted database if
+concurrent or team-wide history ever justifies the added complexity.
+
 ## Supported CI tools today
 
 pytest, Jest, Playwright. Adding a framework is one function in
@@ -196,6 +404,8 @@ along with representative sample logs.
 
 ## Roadmap
 
+- [x] Run-history tracking (`history ingest`/`show`/`report`) — see
+      "Historical tracking" above for what it does and doesn't establish.
 - [ ] Advisory-only GitHub Action: comment the verdict on a failing PR check.
       **Not** auto-retry or auto-merge-block by default — a wrong or
       unresolved verdict should never silently change what CI does; a team
@@ -204,51 +414,9 @@ along with representative sample logs.
 - [ ] A small labeled benchmark of real flaky/real-bug/ambiguous failures, to
       measure false-signal and false-dismissal rates honestly instead of
       just "tests pass"
-
-### Designed, not yet built: run-history tracking
-
-The single-log verdicts above (`ENVIRONMENT_SIGNAL_DETECTED`, `UNVERIFIED`,
-`SUSPECTED_REGRESSION`) can never establish actual intermittency — that
-needs evidence across multiple runs, which this version doesn't have. The
-plan for adding it, kept conservative on purpose:
-
-- **A separate axis, not a replacement.** A test keeps its log-level verdict
-  AND gets an independent historical assessment —
-  `INTERMITTENCY_OBSERVED` (same test passed and failed on the same commit),
-  `FAILURE_REPEATED` (fails every time, root cause still unknown),
-  `PASS_ONLY`, or `INSUFFICIENT_HISTORY`. The verdict describes the log; the
-  assessment describes the run history. Never conflate them, and never use
-  the failure verdict as a stand-in for test outcome — `UNVERIFIED` isn't
-  "passed," and a signal isn't "flaky."
-- **Local SQLite**, e.g. `.flaky-finder/history.db` — no server, no account,
-  consistent with "local-first." Two tables: test runs (run id, test id,
-  framework, outcome, timestamp, commit SHA) and failure evidence (run id,
-  matched signature, rule id + rule-set version, evidence line) — kept
-  separate so a later change to the ruleset doesn't get confused with a
-  change in actually-observed behavior.
-- **Needs passing results too, which failure logs alone can't give.** You
-  can't detect a fail→pass pattern from a log that only ever shows
-  failures. First ingestion format: JUnit XML (pytest/Jest/Playwright can
-  all emit it) — it says *which* tests ran and whether they passed, while
-  the existing log parsers stay responsible for *why* a failure happened.
-- **`INTERMITTENCY_OBSERVED` requires the same commit.** A test failing on
-  one commit and passing on the next could be a real fix, not flakiness —
-  and even same-commit pass/fail is evidence of intermittent *outcomes*,
-  never proof of root cause.
-- **CI runners are ephemeral.** A local SQLite file won't survive between
-  GitHub-hosted jobs on its own — ship local history first, then a
-  documented artifact-based persistence step; a hosted DB only if
-  concurrent/team-wide history ever justifies it.
-- **Four milestones**, each independently testable before the next starts:
-  (1) storage — schema, migrations, duplicate-ingestion handling;
-  (2) ingestion — JUnit XML parsing, safe handling of malformed reports;
-  (3) analysis — the pass/fail pattern logic and the four assessments above,
-  kept structurally separate from the existing verdicts;
-  (4) CLI — `history ingest` / `history show` / `history report`, plus docs
-  for what each assessment does and doesn't mean.
-- **Explicitly not in scope even then:** automatic retries or merge gating
-  based on historical assessment — that's a policy decision for whoever
-  integrates this, not a default this tool should ship with.
+- [ ] A documented CI-artifact persistence step for `.flaky-finder/history.db`
+      across ephemeral GitHub-hosted runners (see "One CI limitation to plan
+      for" above) — not started.
 
 ## License
 
