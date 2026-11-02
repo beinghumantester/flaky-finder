@@ -1,0 +1,67 @@
+#!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { parseLog } from "./parser.js";
+import { classifyWithRules } from "./rules.js";
+import { classifyWithLlm, hasLlmFallback } from "./llm.js";
+import { runHistoryCommand } from "./history-cli.js";
+import type { AnalysisResult } from "./types.js";
+
+const VERDICT_ICON: Record<AnalysisResult["verdict"], string> = {
+  ENVIRONMENT_SIGNAL_DETECTED: "🟡",
+  SUSPECTED_REGRESSION: "🔴",
+  UNVERIFIED: "⚪",
+};
+
+async function main() {
+  const [first, ...rest] = process.argv.slice(2);
+
+  // "history" is a reserved subcommand name, distinct from analyzing a log
+  // file — a CI log file named literally "history" would need to be passed
+  // as ./history to reach the single-log path below.
+  if (first === "history") {
+    runHistoryCommand(rest);
+    return;
+  }
+
+  const file = first;
+  if (!file) {
+    console.error("Usage: flaky-finder analyze <ci-log-file>");
+    console.error("       flaky-finder history <ingest|show|report> ...");
+    process.exit(1);
+  }
+
+  const raw = readFileSync(file, "utf8");
+  const failures = parseLog(raw);
+  console.log(`Parsed ${failures.length} failure(s) from ${file}`);
+  console.log(hasLlmFallback() ? "LLM fallback: enabled\n" : "LLM fallback: disabled (rules-only mode)\n");
+
+  const results: AnalysisResult[] = [];
+  for (const failure of failures) {
+    let result = classifyWithRules(failure);
+    if (result.source === "none" && hasLlmFallback()) {
+      result = await classifyWithLlm(failure);
+    }
+    results.push(result);
+  }
+
+  for (const r of results) {
+    // Rule matches are plain string/regex presence — there's no statistical
+    // score behind them, so the display never calls that "confidence"
+    // (exact/strong/weak match-strength instead). Only the LLM step, which
+    // self-reports an actual confidence in its own classification, uses
+    // that word.
+    const strengthOrConfidence = r.source === "rule" ? `signature-match: ${r.confidence}` : `${r.confidence} verdict confidence`;
+    console.log(`${VERDICT_ICON[r.verdict]} ${r.verdict}  (${strengthOrConfidence}, via ${r.source})`);
+    console.log(`   test: ${r.testName}`);
+    if (r.evidenceLine) console.log(`   evidence: ${r.evidenceLine}`);
+    console.log(`   why: ${r.explanation}\n`);
+  }
+
+  const summary = results.reduce(
+    (acc, r) => ({ ...acc, [r.verdict]: (acc[r.verdict] ?? 0) + 1 }),
+    {} as Record<string, number>
+  );
+  console.log("Summary:", summary);
+}
+
+main();

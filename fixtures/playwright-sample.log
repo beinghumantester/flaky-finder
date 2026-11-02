@@ -1,0 +1,27 @@
+  1) [chromium] › login.spec.ts:10:5 › user can log in with valid credentials
+
+    Error: locator.click: Target closed
+    =========================== logs ===========================
+    waiting for locator('button#submit')
+    ==============================================================
+
+      8 |   await page.goto('/login')
+      9 |   await page.fill('#email', 'a@b.com')
+    > 10 |   await page.click('button#submit')
+         |              ^
+
+      at login.spec.ts:10:5
+
+  2) [chromium] › checkout.spec.ts:22:5 › shows correct total
+
+    Error: expect(received).toBe(expected)
+
+    Expected: "$180.00"
+    Received: "$200.00"
+
+      20 |   await page.goto('/checkout')
+      21 |   const total = await page.textContent('#total')
+    > 22 |   expect(total).toBe('$180.00')
+         |                 ^
+
+      at checkout.spec.ts:22:5

@@ -1,0 +1,19 @@
+# Example of how a team would wire flaky-finder into their own CI: run it
+# against a captured test-failure log and surface the verdict in the job
+# output. Swap `fixtures/pytest-sample.log` for your actual test runner's
+# failure output (e.g. `pytest ... | tee test-output.log` on failure).
+name: flaky-finder example
+
+on:
+  workflow_dispatch:
+
+jobs:
+  classify-failures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run cli -- fixtures/pytest-sample.log
