@@ -104,7 +104,7 @@ export function openHistoryDb(path: string): DatabaseSync {
   } else if (currentVersion !== SCHEMA_VERSION) {
     db.close();
     throw new Error(
-      `${path}: schema version ${currentVersion} does not match this build's version ${SCHEMA_VERSION}. A migration step is needed here once a real schema change ships — none exists yet because none has been needed yet.`
+      `${path}: schema version ${currentVersion} does not match this build's version ${SCHEMA_VERSION}. A migration step is needed here once a real schema change ships — none exists yet because none has been needed yet.`,
     );
   }
 

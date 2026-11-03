@@ -50,8 +50,11 @@ Reply with ONLY compact JSON: {"verdict":"ENVIRONMENT_SIGNAL_DETECTED"|"SUSPECTE
 export function parseLlmContent(content: string): { verdict: Verdict; confidence: Confidence; explanation: string } {
   const parsed = JSON.parse(content.trim());
   const verdict: Verdict =
-    parsed?.verdict === "ENVIRONMENT_SIGNAL_DETECTED" || parsed?.verdict === "SUSPECTED_REGRESSION" ? parsed.verdict : "UNVERIFIED";
-  const confidence: Confidence = verdict === "SUSPECTED_REGRESSION" ? "low" : parsed?.confidence === "medium" ? "medium" : "low";
+    parsed?.verdict === "ENVIRONMENT_SIGNAL_DETECTED" || parsed?.verdict === "SUSPECTED_REGRESSION"
+      ? parsed.verdict
+      : "UNVERIFIED";
+  const confidence: Confidence =
+    verdict === "SUSPECTED_REGRESSION" ? "low" : parsed?.confidence === "medium" ? "medium" : "low";
   const explanation = typeof parsed?.explanation === "string" ? parsed.explanation : "LLM gave no explanation.";
   return { verdict, confidence, explanation };
 }
@@ -90,7 +93,7 @@ export async function classifyWithLlm(failure: Failure): Promise<AnalysisResult>
       }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-    const data = (await res.json()) as any;
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content: string = data.choices?.[0]?.message?.content ?? "";
     const { verdict, confidence, explanation } = parseLlmContent(content);
     return {
@@ -105,7 +108,7 @@ export async function classifyWithLlm(failure: Failure): Promise<AnalysisResult>
     // undici's fetch wraps the real reason in `.cause` (e.g. ECONNRESET,
     // UND_ERR_SOCKET, a JSON parse error) behind the generic top-level
     // message "fetch failed" — surface it, or this is undiagnosable.
-    const cause = (err as any)?.cause;
+    const cause = (err as { cause?: { message?: string } } | undefined)?.cause;
     const detail = cause ? `${(err as Error).message}: ${cause.message ?? cause}` : (err as Error).message;
     return {
       testName: failure.testName,

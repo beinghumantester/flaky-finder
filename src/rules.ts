@@ -145,7 +145,8 @@ function findEvidenceLine(rawText: string, pattern: RegExp): string {
 // of concealed evidence this tool exists to avoid. So when both are present,
 // the assertion is surfaced as a second, explicit observation rather than
 // discarded.
-const ASSERTION_MARKER = /AssertionError|assert\s.+==|expect\(.+\)\.(to|toBe|toEqual|toContain)|expected .*(to equal|to be|,? got)/i;
+const ASSERTION_MARKER =
+  /AssertionError|assert\s.+==|expect\(.+\)\.(to|toBe|toEqual|toContain)|expected .*(to equal|to be|,? got)/i;
 
 function findCoOccurringAssertion(rawText: string, evidenceLine: string): string | null {
   const line = rawText.split("\n").find((l) => l.trim() !== evidenceLine && ASSERTION_MARKER.test(l));
@@ -156,13 +157,17 @@ function findCoOccurringAssertion(rawText: string, evidenceLine: string): string
  * Pure, deterministic, auditable classification. No model call, no guessing:
  * a failure that matches no known signature is UNVERIFIED, never rounded up
  * to SUSPECTED_REGRESSION or down to ENVIRONMENT_SIGNAL_DETECTED.
+ *
+ * `customRules` (see custom-rules.ts) are checked before the built-in RULES,
+ * so a team's org-specific signature wins over a generic one.
  */
-export function classifyWithRules(failure: Failure): AnalysisResult {
-  for (const rule of RULES) {
+export function classifyWithRules(failure: Failure, customRules: Rule[] = []): AnalysisResult {
+  for (const rule of [...customRules, ...RULES]) {
     if (rule.pattern.test(failure.rawText)) {
       const evidenceLine = findEvidenceLine(failure.rawText, rule.pattern);
       const base = rule.explain(evidenceLine);
-      let explanation = rule.verdict === "ENVIRONMENT_SIGNAL_DETECTED" ? `${base} ${signalCaveat(rule.category)}` : base;
+      let explanation =
+        rule.verdict === "ENVIRONMENT_SIGNAL_DETECTED" ? `${base} ${signalCaveat(rule.category)}` : base;
       if (rule.verdict === "ENVIRONMENT_SIGNAL_DETECTED") {
         const coOccurring = findCoOccurringAssertion(failure.rawText, evidenceLine);
         if (coOccurring) {
@@ -176,6 +181,7 @@ export function classifyWithRules(failure: Failure): AnalysisResult {
         confidence: rule.matchStrength,
         category: rule.category,
         ruleId: rule.id,
+        ruleOrigin: rule.origin ?? "builtin",
         evidenceLine,
         explanation,
         source: "rule",

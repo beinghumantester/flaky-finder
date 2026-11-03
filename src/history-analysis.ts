@@ -94,13 +94,16 @@ function fetchRunsForTestId(db: DatabaseSync, testId: string): TestRunQueryRow[]
        FROM test_runs tr
        LEFT JOIN failure_evidence fe ON fe.test_run_id = tr.id
        WHERE tr.test_id = ?
-       ORDER BY tr.recorded_at ASC, tr.id ASC`
+       ORDER BY tr.recorded_at ASC, tr.id ASC`,
     )
     .all(testId) as unknown as TestRunQueryRow[];
 }
 
 /** Every distinct test_id currently tracked, optionally narrowed by framework or a case-insensitive substring match on the test name. */
-export function listTrackedTestIds(db: DatabaseSync, filters: { framework?: string; nameQuery?: string } = {}): string[] {
+export function listTrackedTestIds(
+  db: DatabaseSync,
+  filters: { framework?: string; nameQuery?: string } = {},
+): string[] {
   const rows = db.prepare("SELECT DISTINCT test_id, test_name, framework FROM test_runs").all() as unknown as Array<{
     test_id: string;
     test_name: string;
@@ -108,7 +111,12 @@ export function listTrackedTestIds(db: DatabaseSync, filters: { framework?: stri
   }>;
   return rows
     .filter((r) => !filters.framework || r.framework === filters.framework)
-    .filter((r) => !filters.nameQuery || r.test_name.toLowerCase().includes(filters.nameQuery.toLowerCase()) || r.test_id.toLowerCase().includes(filters.nameQuery.toLowerCase()))
+    .filter(
+      (r) =>
+        !filters.nameQuery ||
+        r.test_name.toLowerCase().includes(filters.nameQuery.toLowerCase()) ||
+        r.test_id.toLowerCase().includes(filters.nameQuery.toLowerCase()),
+    )
     .map((r) => r.test_id);
 }
 
@@ -125,7 +133,9 @@ export function summarizeTest(db: DatabaseSync, testId: string): TestSummary | n
     if (row.commit_sha) commits.add(row.commit_sha);
   }
 
-  const historyPoints = rows.filter((r) => r.outcome === "PASSED" || r.outcome === "FAILED").map((r) => ({ outcome: r.outcome, commitSha: r.commit_sha }));
+  const historyPoints = rows
+    .filter((r) => r.outcome === "PASSED" || r.outcome === "FAILED")
+    .map((r) => ({ outcome: r.outcome, commitSha: r.commit_sha }));
   const { assessment, explanation } = assessHistory(historyPoints);
 
   const recentRuns = rows
@@ -162,6 +172,11 @@ export function reportAll(db: DatabaseSync, filters: { framework?: string } = {}
   const testIds = listTrackedTestIds(db, filters);
   const summaries = testIds.map((id) => summarizeTest(db, id)).filter((s): s is TestSummary => s !== null);
   // Surface the assessments most worth a human's attention first.
-  const priority: Record<HistoryAssessment, number> = { INTERMITTENCY_OBSERVED: 0, FAILURE_REPEATED: 1, INSUFFICIENT_HISTORY: 2, PASS_ONLY: 3 };
+  const priority: Record<HistoryAssessment, number> = {
+    INTERMITTENCY_OBSERVED: 0,
+    FAILURE_REPEATED: 1,
+    INSUFFICIENT_HISTORY: 2,
+    PASS_ONLY: 3,
+  };
   return summaries.sort((a, b) => priority[a.assessment] - priority[b.assessment] || a.testId.localeCompare(b.testId));
 }

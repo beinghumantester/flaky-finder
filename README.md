@@ -101,9 +101,11 @@ If you need the full platform, use the projects above.
 
 ## Usage
 
+Requires **Node.js 22.5 or newer** (see [Node.js version](#nodejs-version)).
+
 ```bash
 npm install
-npm run cli -- fixtures/pytest-sample.log
+npm run cli -- analyze fixtures/pytest-sample.log
 ```
 
 ```
@@ -119,10 +121,137 @@ LLM fallback: disabled (rules-only mode)
    test: test_discount_calculation
    why: No known failure signature matched. This log alone does not establish whether the failure is caused by a product defect, the test itself, or the environment. Rerun history and code review may provide additional evidence, though neither is guaranteed to resolve it.
 
-Summary: { ENVIRONMENT_SIGNAL_DETECTED: 1, UNVERIFIED: 1 }
+Summary: {
+  ENVIRONMENT_SIGNAL_DETECTED: 1,
+  SUSPECTED_REGRESSION: 0,
+  UNVERIFIED: 1
+}
 ```
 
-Also bundled: `fixtures/jest-sample.log` and `fixtures/playwright-sample.log`.
+Also bundled: `fixtures/jest-sample.log`, `fixtures/playwright-sample.log`, and
+`fixtures/github-actions-pytest.log` (the pytest sample as GitHub Actions
+serves it: timestamps, ANSI colors, CRLF line endings).
+
+`flaky-finder <file>` (without `analyze`) still works. Run
+`flaky-finder --help` for every command, and `flaky-finder --version` for
+the version. Unknown or misspelled flags are an error (exit code 2), never
+silently ignored.
+
+### Raw CI logs: colors and timestamps are stripped first
+
+GitHub Actions and GitLab force colored output, and logs downloaded from
+GitHub Actions prefix every line with a timestamp. Before parsing,
+flaky-finder removes ANSI escape codes, GitHub Actions-style
+`2026-11-03T05:27:43.1234567Z ` line prefixes, and `\r\n` line endings
+(`src/log-cleaning.ts`), so you can feed it a log exactly as CI produced it.
+JUnit failure text gets the same ANSI stripping. Other CI-specific prefixes
+(for example GitLab section markers) are not handled yet.
+
+### Machine-readable output (`--json`)
+
+```bash
+npm run cli -- analyze fixtures/pytest-sample.log --json
+```
+
+Prints exactly one JSON object to stdout, for scripts and CI steps (for
+example a PR-comment action) to consume instead of scraping the text output:
+
+```json
+{
+  "schemaVersion": 1,
+  "tool": { "name": "flaky-finder", "version": "0.1.0" },
+  "input": "fixtures/pytest-sample.log",
+  "llmFallback": false,
+  "customRules": null,
+  "results": [
+    {
+      "testName": "test_fetch_user_retries",
+      "framework": "pytest",
+      "verdict": "ENVIRONMENT_SIGNAL_DETECTED",
+      "confidence": "exact",
+      "category": "network",
+      "ruleId": "network-reset",
+      "ruleOrigin": "builtin",
+      "evidenceLine": "E       requests.exceptions.ConnectionError: ...",
+      "explanation": "...",
+      "source": "rule"
+    }
+  ],
+  "summary": { "ENVIRONMENT_SIGNAL_DETECTED": 1, "SUSPECTED_REGRESSION": 0, "UNVERIFIED": 1 }
+}
+```
+
+`summary` always contains all three verdicts (zero-filled). `confidence`
+means the same as in the text output: a match strength for rules, the
+model's own confidence for the LLM step. `history ingest`, `show`, and
+`report` also accept `--json`. `schemaVersion` changes only if a field is
+removed or changes meaning; new fields can be added without a bump, so
+ignore fields you don't recognize. The exit code is 0 whatever the verdicts
+are: this output is advisory, and gating on it is your decision.
+
+### Custom rules (`FLAKY_FINDER_RULES_FILE`)
+
+Add your own team's failure signatures, such as a known-unreliable internal
+host, without forking `src/rules.ts`:
+
+```json
+{
+  "rules": [
+    {
+      "id": "internal-mirror-down",
+      "category": "network",
+      "verdict": "ENVIRONMENT_SIGNAL_DETECTED",
+      "matchStrength": "exact",
+      "pattern": "artifacts\\.corp\\.example\\.com.*(503|ECONNRESET)",
+      "flags": "i",
+      "explanation": "The internal artifact mirror was unreachable ({line})."
+    }
+  ]
+}
+```
+
+```bash
+FLAKY_FINDER_RULES_FILE=team-rules.json npm run cli -- analyze ci.log
+```
+
+- **Fields:** `id` (lowercase kebab-case, unique, and not the same as a
+  built-in rule id), `category`, `verdict`, `matchStrength`
+  (`exact`/`strong`/`weak`) and `pattern` (a JavaScript regex as a string)
+  are required. `flags` is optional (default `"i"`; only `i`, `m`, `s` and
+  `u` are allowed, because `g` and `y` make a regex stateful). `explanation`
+  is optional; `{line}` in it is replaced with the matched evidence line.
+- **Verdicts:** only `ENVIRONMENT_SIGNAL_DETECTED` or `UNVERIFIED`, the same
+  as the built-in rules. No rule can claim `SUSPECTED_REGRESSION` from text
+  matching alone.
+- **Precedence:** custom rules are checked **before** the built-ins, in file
+  order, and the first match wins, because a team's own signature is usually
+  more specific than a generic one.
+- **Same contract as built-ins:** every custom match still cites its
+  evidence line and gets the same "not a confirmed diagnosis" caveat. Output
+  marks it as custom (`via custom rule <id>`, or `"ruleOrigin": "custom"` in
+  JSON).
+- **Fails loudly:** a missing file, invalid JSON, a missing field, a bad
+  regex or a disallowed verdict exits with code 1 and names the file and
+  rule index. A bad file never means "zero rules".
+- Rules are data, not code: loading a rules file never executes anything.
+  A regex can still be slow on a large log if it's written badly
+  (catastrophic backtracking), so keep custom patterns simple.
+- **Known gap:** `history ingest` does **not** use custom rules yet. History
+  stores the built-in `RULESET_VERSION` with every piece of failure evidence,
+  and that number says nothing about a team's custom rules. Supporting them
+  needs a schema change to record which custom ruleset was used, so it's
+  deliberately left out for now, not forgotten.
+
+### Node.js version
+
+flaky-finder declares `node >= 22.5.0`. Node.js 18 and 20 are both
+end-of-life ([Node.js releases](https://nodejs.org/en/about/previous-releases)),
+so supporting them isn't a goal. The one feature that really needs 22.5 is
+history tracking, which uses the built-in `node:sqlite` module
+([added in v22.5.0](https://nodejs.org/api/sqlite.html)). That module is
+loaded only when a `history` command runs, so on a Node.js without it, the
+command exits with a clear message instead of a stack trace, and `analyze`
+doesn't depend on it at all.
 
 ### Optional: enable the LLM fallback
 
@@ -138,7 +267,10 @@ dependency it doesn't have.
 ### Run the test suite
 
 ```bash
-npm test
+npm test           # run all tests
+npm run coverage   # run tests with a c8 coverage report (HTML in coverage/)
+npm run lint       # ESLint
+npm run format     # Prettier
 ```
 
 ## Limitations — what this tool does NOT establish
@@ -162,7 +294,7 @@ Stated plainly, because the whole point of this project is not overclaiming:
   different test. Treat each framework's parser as "handles the common
   case," not an exhaustive model of that tool's output.
 - **The test suite checks the rules behave as written, not that they're
-  right.** 25/25 tests passing means the regexes match what they were built
+  right.** A passing suite means the regexes match what they were built
   to match, including the adversarial case where a matching signature masks
   a real regression, a documented precedence rule for overlapping matches
   (and that a co-occurring, lower-precedence observation is surfaced rather
@@ -219,9 +351,10 @@ once and discarded.
 
 ### Storage
 
-Local SQLite, via Node's built-in `node:sqlite` (experimental as of Node 22
-— you'll see an `ExperimentalWarning` on stderr; that's expected and
-harmless) — no new dependency, no server, no account, consistent with this
+Local SQLite, via Node's built-in `node:sqlite` (still marked experimental
+on Node 22 — you'll see an `ExperimentalWarning` on stderr; that's expected
+and harmless; newer Node.js versions mark it as a release candidate, see the
+[Node.js docs](https://nodejs.org/api/sqlite.html)) — no new dependency, no server, no account, consistent with this
 project staying local-first. Default location: `.flaky-finder/history.db`
 (gitignored; override with `--db <path>` on every history command). Two
 logical tables, kept deliberately separate:
@@ -366,7 +499,8 @@ Flags on `ingest`: `--commit <sha>`, `--run-id <id>`, `--environment <id>`,
 `--framework <pytest|jest|playwright|generic>` (JUnit XML doesn't self-
 identify the framework; defaults to `generic`), `--db <path>`. `show` and
 `report` both accept `--db <path>`; `report` also accepts
-`--framework <name>` to filter. Every command explains what to do next when
+`--framework <name>` to filter. All three accept `--json` (see
+[Machine-readable output](#machine-readable-output---json)). Every command explains what to do next when
 no history exists yet, rather than printing an empty table.
 
 ### What's explicitly NOT in scope, even now
@@ -380,21 +514,35 @@ it stays a deliberate choice a team opts into, never a default this project
 ships with.
 
 Also still out of scope: a hosted/shared database (local SQLite only — see
-the "CI runners are ephemeral" note below), and any ingestion format other
+"Keeping history across CI runs" below), and any ingestion format other
 than JUnit XML.
 
-### One CI limitation to plan for
+### Keeping history across CI runs
 
-GitHub-hosted runners are ephemeral — a `.flaky-finder/history.db` created
-during one job will not automatically be available in the next one. Running
-`history ingest` inside a single CI job works today (history accumulates
-across local/repeated runs on one machine, e.g. during local development),
-but team-wide history across separate hosted CI jobs needs a persistence
-step this project doesn't ship yet — e.g. downloading and re-uploading the
-db file as a workflow artifact between jobs. That's intentionally left for
-later: get local history right first, add a documented artifact-based step
-when it's actually needed, and only consider a hosted database if
-concurrent or team-wide history ever justifies the added complexity.
+GitHub-hosted runners are ephemeral: a `.flaky-finder/history.db` created in
+one job is gone by the next, so `history ingest` alone records almost nothing
+useful in CI. [`.github/workflows/history-persistence-example.yml`](.github/workflows/history-persistence-example.yml)
+shows how to keep it in the Actions cache: restore the latest copy, ingest
+the run's JUnit report, then save it under a new key (a cache entry can't be
+overwritten, so each run saves a new one and restores the newest by prefix).
+
+Know its limits before relying on it (from GitHub's
+[dependency caching docs](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)):
+
+- **Branch scope:** a run can restore caches from its own branch or the
+  default branch only. Record history on the default branch so there is one
+  shared copy.
+- **Eviction:** entries not accessed for 7 days are deleted, and a repository
+  has a 10 GB cache limit by default. If nothing runs for a week, history
+  starts over.
+- **Concurrent runs:** two overlapping runs restore the same old copy, and
+  whichever saves last wins, so the other run's ingestion is lost. The
+  example uses a `concurrency` group to run one at a time.
+
+The cache is the simplest option, not a durable store. If you need history
+that never expires or is shared across branches, keep the db somewhere you
+control (for example an artifact store or a storage bucket). A hosted
+database is still out of scope.
 
 ## Supported CI tools today
 
@@ -414,10 +562,19 @@ along with representative sample logs.
 - [ ] A small labeled benchmark of real flaky/real-bug/ambiguous failures, to
       measure false-signal and false-dismissal rates honestly instead of
       just "tests pass"
-- [ ] A documented CI-artifact persistence step for `.flaky-finder/history.db`
-      across ephemeral GitHub-hosted runners (see "One CI limitation to plan
-      for" above) — not started.
+- [x] A documented CI persistence step for `.flaky-finder/history.db`
+      across ephemeral GitHub-hosted runners — see "Keeping history across CI
+      runs" above.
+- [x] Machine-readable `--json` output (the input a PR-comment action needs).
+- [x] Custom rules from a JSON file (`FLAKY_FINDER_RULES_FILE`).
+- [ ] Custom rules in `history ingest` (needs a schema change; see "Custom
+      rules").
+
+## Contributing
+
+Contributions are welcome — new rules, new framework parsers, and sample
+logs especially. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
+[MIT](LICENSE)
