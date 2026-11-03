@@ -120,8 +120,160 @@ test("history ingest/show/report --json round-trip through a throwaway database"
   }
 });
 
+test("analyze groups repeated rule matches, excludes weak rules by default, and never touches the ungrouped results", () => {
+  const defaultRun = JSON.parse(cli("analyze", "fixtures/pytest-grouping-sample.log", "--json").stdout);
+  assert.equal(defaultRun.results.length, 6, "all 6 failures still present, ungrouped, regardless of grouping");
+
+  // 3 ECONNRESET failures (exact) — one repeated test name — form a group.
+  // 2 teardown-hang failures (weak) do not, by default.
+  assert.equal(defaultRun.failureGroups.length, 1);
+  const [group] = defaultRun.failureGroups;
+  assert.equal(group.groupingMethod, "rule_id");
+  assert.equal(group.ruleId, "network-reset");
+  assert.equal(group.ruleOrigin, "builtin");
+  assert.equal(group.matchStrength, "exact");
+  assert.equal(group.occurrenceCount, 3);
+  assert.equal(group.affectedTestCount, 3, "three distinct test names in this fixture");
+  assert.match(group.limitation, /not a confirmed shared root cause/);
+  assert.equal(group.observations.length, 3);
+  // Grouping is read-only: an observation is the exact same object shape as
+  // its entry in the top-level, ungrouped results array.
+  assert.deepEqual(
+    group.observations.find((o: { testName: string }) => o.testName === "test_checkout_flow"),
+    defaultRun.results.find((r: { testName: string }) => r.testName === "test_checkout_flow"),
+  );
+
+  const weakRun = JSON.parse(
+    cli("analyze", "fixtures/pytest-grouping-sample.log", "--include-weak-groups", "--json").stdout,
+  );
+  assert.equal(weakRun.failureGroups.length, 2, "teardown-hang now also forms a group");
+  const teardownGroup = weakRun.failureGroups.find((g: { ruleId: string }) => g.ruleId === "teardown-hang");
+  assert.equal(teardownGroup.matchStrength, "weak");
+  assert.equal(teardownGroup.occurrenceCount, 2);
+});
+
+test("the text output's failure signature section is omitted when nothing repeats, and shown with the limitation sentence when it does", () => {
+  const noGroups = cli("analyze", "fixtures/pytest-sample.log");
+  assert.doesNotMatch(noGroups.stdout, /Failure signature groups/);
+
+  const withGroups = cli("analyze", "fixtures/pytest-grouping-sample.log");
+  assert.match(withGroups.stdout, /Failure signature groups/);
+  assert.match(withGroups.stdout, /3x network-reset/);
+  assert.match(withGroups.stdout, /not a confirmed shared root cause/);
+});
+
 test("a misspelled history flag is rejected instead of silently recording a run without it", () => {
   const { code, stderr } = cli("history", "ingest", "fixtures/junit-sample.xml", "--comit", "abc");
   assert.equal(code, 2);
   assert.match(stderr, /Unknown option '--comit'/);
+});
+
+// Contract tests for docs/json-output.md. If one of these fails, either the
+// change was accidental, or it's intentional and needs the doc updated —
+// and, if a field was removed or changed meaning, a schemaVersion bump.
+function keys(value: object): string[] {
+  return Object.keys(value).sort();
+}
+
+test("JSON contract: analyze output keeps its documented fields", () => {
+  const output = JSON.parse(cli("analyze", "fixtures/pytest-sample.log", "--json").stdout);
+  assert.deepEqual(keys(output), [
+    "customRules",
+    "failureGroups",
+    "input",
+    "llmFallback",
+    "results",
+    "schemaVersion",
+    "summary",
+    "tool",
+  ]);
+  const [ruleResult, noneResult] = output.results;
+  assert.deepEqual(keys(ruleResult), [
+    "alsoMatched",
+    "category",
+    "confidence",
+    "evidenceLine",
+    "explanation",
+    "framework",
+    "ruleId",
+    "ruleOrigin",
+    "source",
+    "testName",
+    "verdict",
+  ]);
+  assert.deepEqual(keys(noneResult), ["confidence", "explanation", "framework", "source", "testName", "verdict"]);
+});
+
+test("JSON contract: history ingest/show/report keep their documented fields", () => {
+  const dir = mkdtempSync(join(tmpdir(), "flaky-finder-cli-"));
+  const db = join(dir, "history.db");
+  const ingestArgs = ["history", "ingest", "fixtures/junit-sample.xml", "--run-id", "r1", "--db", db, "--json"];
+  try {
+    assert.deepEqual(keys(JSON.parse(cli(...ingestArgs).stdout)), [
+      "commitSha",
+      "counts",
+      "db",
+      "environmentId",
+      "file",
+      "framework",
+      "ingestionId",
+      "runId",
+      "schemaVersion",
+      "skipped",
+      "totalCases",
+      "warnings",
+    ]);
+    assert.deepEqual(keys(JSON.parse(cli(...ingestArgs).stdout)), [
+      "db",
+      "existingIngestedAt",
+      "existingIngestionId",
+      "file",
+      "reason",
+      "schemaVersion",
+      "skipped",
+    ]);
+
+    const show = JSON.parse(cli("history", "show", "test_fetch_user_retries", "--db", db, "--json").stdout);
+    assert.deepEqual(keys(show), ["db", "query", "schemaVersion", "tests"]);
+    assert.deepEqual(keys(show.tests[0]), [
+      "assessment",
+      "assessmentExplanation",
+      "classname",
+      "counts",
+      "distinctCommits",
+      "firstSeen",
+      "framework",
+      "lastSeen",
+      "recentRuns",
+      "testId",
+      "testName",
+      "totalRuns",
+    ]);
+    assert.deepEqual(keys(show.tests[0].recentRuns[0]), [
+      "commitSha",
+      "evidenceLine",
+      "outcome",
+      "recordedAt",
+      "ruleId",
+      "runId",
+    ]);
+
+    const report = JSON.parse(cli("history", "report", "--db", db, "--json").stdout);
+    assert.deepEqual(keys(report), ["db", "schemaVersion", "summary", "tests"]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("--json writes only JSON to stdout; warnings and errors go to stderr", () => {
+  const dir = mkdtempSync(join(tmpdir(), "flaky-finder-cli-"));
+  try {
+    // On Node versions where node:sqlite prints an ExperimentalWarning, it
+    // must land on stderr, never inside the JSON on stdout.
+    const { stdout } = cli("history", "report", "--db", join(dir, "h.db"), "--json");
+    assert.doesNotThrow(() => JSON.parse(stdout));
+    assert.doesNotMatch(stdout, /Warning/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

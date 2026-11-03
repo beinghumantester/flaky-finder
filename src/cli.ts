@@ -5,6 +5,7 @@ import { parseLog } from "./parser.js";
 import { classifyWithRules } from "./rules.js";
 import { classifyWithLlm, hasLlmFallback } from "./llm.js";
 import { CustomRuleError, loadCustomRules } from "./custom-rules.js";
+import { groupFailures, GROUP_LIMITATION } from "./failure-grouping.js";
 import type { AnalysisResult, Rule, Verdict } from "./types.js";
 
 // Bump when a field is removed or changes meaning in --json output. Adding a
@@ -25,7 +26,8 @@ const USAGE = `Usage:
   flaky-finder --help | --version
 
 analyze options:
-  --json   Print one JSON object to stdout instead of human-readable text
+  --json                  Print one JSON object to stdout instead of human-readable text
+  --include-weak-groups   Include matchStrength:"weak" rules in the failure signature summary (excluded by default)
 
 Environment:
   FLAKY_FINDER_RULES_FILE   Path to a JSON file of custom rules, checked before the built-ins (analyze only)
@@ -51,6 +53,7 @@ async function runAnalyze(argv: string[]): Promise<void> {
       options: {
         json: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
+        "include-weak-groups": { type: "boolean", default: false },
       },
     });
   } catch (err) {
@@ -101,6 +104,11 @@ async function runAnalyze(argv: string[]): Promise<void> {
   const summary: Record<Verdict, number> = { ENVIRONMENT_SIGNAL_DETECTED: 0, SUSPECTED_REGRESSION: 0, UNVERIFIED: 0 };
   for (const r of results) summary[r.verdict] += 1;
 
+  // A read-only view over `results` grouped by which rule decided their
+  // verdict — see failure-grouping.ts for what this does and doesn't
+  // establish. Never changes a result; always safe to compute.
+  const failureGroups = groupFailures(results, { includeWeak: values["include-weak-groups"] });
+
   if (values.json) {
     const output = {
       schemaVersion: JSON_SCHEMA_VERSION,
@@ -109,6 +117,7 @@ async function runAnalyze(argv: string[]): Promise<void> {
       llmFallback: hasLlmFallback(),
       customRules: rulesFile ? { path: rulesFile, count: customRules.length } : null,
       results,
+      failureGroups,
       summary,
     };
     console.log(JSON.stringify(output, null, 2));
@@ -131,7 +140,35 @@ async function runAnalyze(argv: string[]): Promise<void> {
     console.log(`${VERDICT_ICON[r.verdict]} ${r.verdict}  (${strengthOrConfidence}, via ${via})`);
     console.log(`   test: ${r.testName}`);
     if (r.evidenceLine) console.log(`   evidence: ${r.evidenceLine}`);
-    console.log(`   why: ${r.explanation}\n`);
+    console.log(`   why: ${r.explanation}`);
+    // Other rules that matched but lost on precedence — shown, never hidden.
+    for (const m of r.alsoMatched ?? []) {
+      console.log(`   also matched (did not decide the verdict): ${m.ruleId} [${m.category}] — ${m.evidenceLine}`);
+    }
+    console.log("");
+  }
+
+  // Only printed when at least one group exists — most runs won't have a
+  // rule repeat, and an empty section on every normal run would be noise
+  // the way an empty history table isn't (history-cli always has something
+  // to say about what to do next; here there's nothing to act on).
+  if (failureGroups.length > 0) {
+    console.log("Failure signature groups (same rule matched more than once — see limitation below):");
+    for (const g of failureGroups) {
+      const via = g.ruleOrigin === "custom" ? `custom rule ${g.ruleId}` : g.ruleId;
+      console.log(
+        `  ${g.occurrenceCount}x ${via}  [${g.category}, ${g.matchStrength}]  (${g.affectedTestCount} test(s) affected)`,
+      );
+      // Representative evidence only — dumping every identical line would
+      // make this section longer than the output it's meant to summarize.
+      // All of them are still in observations in --json.
+      const shown = g.observations.slice(0, 3);
+      for (const o of shown) console.log(`     - ${o.testName}: ${o.evidenceLine}`);
+      if (g.observations.length > shown.length) {
+        console.log(`     ... and ${g.observations.length - shown.length} more (see --json for all)`);
+      }
+    }
+    console.log(`  ${GROUP_LIMITATION}\n`);
   }
 
   console.log("Summary:", summary);

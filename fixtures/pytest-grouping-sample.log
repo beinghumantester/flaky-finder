@@ -1,0 +1,54 @@
+============================= FAILURES ==============================
+_______________________ test_checkout_flow _______________________
+
+    def test_checkout_flow():
+        client = APIClient()
+>       response = client.post("/checkout")
+E       requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+
+tests/test_checkout.py:12: ConnectionError
+_______________________ test_checkout_flow_retry_1 _______________________
+
+    def test_checkout_flow_retry_1():
+        client = APIClient()
+>       response = client.post("/checkout")
+E       requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+
+tests/test_checkout.py:12: ConnectionError
+_______________________ test_inventory_sync _______________________
+
+    def test_inventory_sync():
+        client = APIClient()
+>       response = client.get("/inventory")
+E       requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+
+tests/test_inventory.py:40: ConnectionError
+_______________________ test_worker_teardown_a _______________________
+
+    def test_worker_teardown_a():
+        pass
+E       RuntimeError: did not exit cleanly
+
+tests/test_worker.py:5: RuntimeError
+_______________________ test_worker_teardown_b _______________________
+
+    def test_worker_teardown_b():
+        pass
+E       RuntimeError: did not exit cleanly
+
+tests/test_worker.py:9: RuntimeError
+_______________________ test_discount_calculation _______________________
+
+    def test_discount_calculation():
+        cart = Cart(items=[Item(price=100, qty=2)])
+>       assert cart.total_with_discount(code="SAVE10") == 180
+E       assert 200 == 180
+
+tests/test_cart.py:58: AssertionError
+======================= short test summary info ======================
+FAILED tests/test_checkout.py::test_checkout_flow - requests.exceptions.ConnectionError
+FAILED tests/test_checkout.py::test_checkout_flow_retry_1 - requests.exceptions.ConnectionError
+FAILED tests/test_inventory.py::test_inventory_sync - requests.exceptions.ConnectionError
+FAILED tests/test_worker.py::test_worker_teardown_a - RuntimeError
+FAILED tests/test_worker.py::test_worker_teardown_b - RuntimeError
+FAILED tests/test_cart.py::test_discount_calculation - assert 200 == 180

@@ -174,7 +174,8 @@ example a PR-comment action) to consume instead of scraping the text output:
       "ruleOrigin": "builtin",
       "evidenceLine": "E       requests.exceptions.ConnectionError: ...",
       "explanation": "...",
-      "source": "rule"
+      "source": "rule",
+      "alsoMatched": []
     }
   ],
   "summary": { "ENVIRONMENT_SIGNAL_DETECTED": 1, "SUSPECTED_REGRESSION": 0, "UNVERIFIED": 1 }
@@ -188,6 +189,11 @@ model's own confidence for the LLM step. `history ingest`, `show`, and
 removed or changes meaning; new fields can be added without a bump, so
 ignore fields you don't recognize. The exit code is 0 whatever the verdicts
 are: this output is advisory, and gating on it is your decision.
+
+**Full contract:** every field of every `--json` output, when it's present,
+and the compatibility and exit-code rules are in
+[docs/json-output.md](docs/json-output.md). Tests in `tests/cli.test.ts`
+fail if a field name changes by accident.
 
 ### Custom rules (`FLAKY_FINDER_RULES_FILE`)
 
@@ -224,8 +230,13 @@ FLAKY_FINDER_RULES_FILE=team-rules.json npm run cli -- analyze ci.log
   as the built-in rules. No rule can claim `SUSPECTED_REGRESSION` from text
   matching alone.
 - **Precedence:** custom rules are checked **before** the built-ins, in file
-  order, and the first match wins, because a team's own signature is usually
-  more specific than a generic one.
+  order, and the first match decides the verdict, because a team's own
+  signature is usually more specific than a generic one. A built-in rule
+  that also matched is still listed in `alsoMatched` (see
+  [How rules are evaluated](#how-rules-are-evaluated)).
+- **Multi-line patterns:** with the `s` flag a pattern can match across
+  lines. The evidence is then exactly the text it matched (which can
+  contain line breaks), never surrounding log text.
 - **Same contract as built-ins:** every custom match still cites its
   evidence line and gets the same "not a confirmed diagnosis" caveat. Output
   marks it as custom (`via custom rule <id>`, or `"ruleOrigin": "custom"` in
@@ -241,6 +252,95 @@ FLAKY_FINDER_RULES_FILE=team-rules.json npm run cli -- analyze ci.log
   and that number says nothing about a team's custom rules. Supporting them
   needs a schema change to record which custom ruleset was used, so it's
   deliberately left out for now, not forgotten.
+
+### How rules are evaluated
+
+1. **Every rule is checked** against each failure, custom rules first (in
+   file order), then the built-ins (in `src/rules.ts` order).
+2. **The first matching rule decides the verdict.** Built-ins are ordered
+   most specific first: an exact error code like `ECONNRESET` before a
+   loose phrase like `Target closed`. There is no scoring: precedence is
+   only list order, so the result is predictable and easy to audit.
+3. **Nothing that matched is hidden.** Every other matching rule is listed
+   with its own evidence line, as `also matched (did not decide the
+   verdict)` in the text output and `alsoMatched` in JSON.
+4. **A co-occurring assertion is surfaced too.** If the winning rule found
+   an environment signature but the log also has an assertion mismatch
+   (`AssertionError`, `expect(...).toBe`, ...), the explanation quotes it
+   and says the signature doesn't rule it out.
+
+Example: a log with both a connection reset and a timeout is reported as
+`network-reset` (it comes first), with `timeout-exceeded` and its line
+under `alsoMatched`. Neither one establishes the cause: they are two
+observations to check. `tests/rules.test.ts` and
+`tests/custom-rules.test.ts` cover these cases.
+
+History ingestion records only the deciding rule per failure for now, not
+`alsoMatched`.
+
+### Failure signature groups
+
+A single CI run can produce many failures that all matched the same rule —
+a shared database outage showing up as 24 separate `db-contention` results,
+say. Investigating 24 separate failures one at a time when they share a
+signature is wasted effort, so `analyze` also reports a read-only summary
+grouping its own results by which rule decided them.
+
+**What this does and does not establish.** A group means "these failures
+matched the same rule" — that is a fact already sitting in the per-failure
+results above it; grouping doesn't add a new classification or inference on
+top. It does **not** mean "these failures share one real-world cause":
+independent, unrelated failures can trivially produce the identical
+signature (two separate network blips on the same day), and a single real
+incident can just as easily produce several different signatures (a DB
+outage causing one test to time out and another to see a connection
+reset). Every group states this explicitly, not just the ones that look
+surprising — the same discipline as `ENVIRONMENT_SIGNAL_DETECTED` itself.
+
+```
+Failure signature groups (same rule matched more than once — see limitation below):
+  3x network-reset  [network, exact]  (3 test(s) affected)
+     - test_checkout_flow: E       requests.exceptions.ConnectionError: ...
+     - test_checkout_flow_retry_1: E       requests.exceptions.ConnectionError: ...
+     - test_inventory_sync: E       requests.exceptions.ConnectionError: ...
+  This group reflects failure observations that matched the same rule — a shared
+  classification signature, not a confirmed shared root cause. ...
+```
+
+**Rules:**
+
+- **Grouped by `ruleId` + `ruleOrigin`.** A custom rule can never share an
+  id with a built-in (`custom-rules.ts` rejects that when the rules file is
+  loaded), but grouping keys on both anyway rather than relying on that
+  upstream check to stay correct.
+- **Counts failure *observations*, not tests.** `occurrenceCount` is how
+  many failures matched; `affectedTestCount`/`affectedTestIds` is how many
+  *distinct* tests that covers — they differ when the same test produced
+  more than one observation, e.g. a retry-plugin duplicate (see the JUnit
+  parser's documented handling of that case).
+- **`matchStrength: "weak"` rules are excluded by default**, not because a
+  weak match is wrong, but because grouping on a loose, generic signature
+  — or, for a custom rule, a **self-declared** "weak" that nothing here
+  independently verifies — is the easiest way for this feature to
+  manufacture the appearance of a pattern that isn't really there. Pass
+  `--include-weak-groups` to see them too; nothing is ever removed from the
+  ungrouped results either way.
+- **A rule that matched only once is not a group.** It's already visible in
+  the normal per-failure output.
+- **Grouping never changes a result.** `observations` holds the exact same
+  objects that appear in the top-level results; verdicts, evidence and
+  explanations are untouched.
+- **The text output shows up to 3 evidence lines per group**, plus a count
+  of how many more there are — `--json`'s `observations` array always has
+  all of them.
+
+**Deliberately not implemented, and not planned without more evidence
+first:** normalizing/fuzzing evidence text to group near-duplicate (not
+identical) errors, and any similarity- or LLM-based clustering across
+*different* rules. Both require judgment calls this project isn't willing
+to make without a labeled dataset to validate against — see the Roadmap.
+This feature is a grouping of existing, already-trusted classifications; it
+is explicitly not a root-cause or incident-correlation engine.
 
 ### Node.js version
 
@@ -544,6 +644,49 @@ that never expires or is shared across branches, keep the db somewhere you
 control (for example an artifact store or a storage bucket). A hosted
 database is still out of scope.
 
+## Data handling and privacy
+
+CI logs and test reports can contain internal URLs, user IDs, request
+payloads, environment variables and credentials. Here is exactly where
+flaky-finder sends or keeps that text.
+
+**`analyze` (rules only, the default):** reads the log locally and prints
+results. Nothing is stored or sent anywhere. The output (text or `--json`)
+quotes evidence lines from your log, so wherever you print or upload it
+(CI logs, PR comments) can expose what those lines contain.
+
+**The optional LLM fallback sends log text to a third party.** It runs only
+when `FLAKY_FINDER_API_KEY` is set, and only for failures no rule matched.
+For each of those, up to the first **4,000 characters** of the failure's
+text go to the endpoint in `FLAKY_FINDER_BASE_URL` (Groq by default).
+That text is not redacted. If your logs can contain secrets or customer
+data, either leave the key unset or point `FLAKY_FINDER_BASE_URL` at a
+model you run yourself (for example Ollama, see `.env.example`).
+
+**`history ingest` stores a summary, not the report.** In
+`.flaky-finder/history.db` it keeps:
+
+- per report: a SHA-256 hash of its content, the run id, commit SHA,
+  environment id, framework, the report's file path, and the time;
+- per test case: test name, classname, outcome, and the same run details;
+- per failed test only: the verdict, rule id, ruleset version, the
+  **matched evidence line**, and the explanation (which quotes that line).
+
+The full report and full failure text are **not** stored. The evidence line
+is still raw log text, though, and can contain anything that line
+contained.
+
+**Retention and deletion:** there is no automatic expiry. History is kept
+until you delete it. To delete everything, delete the database file
+(`.flaky-finder/history.db`, or your `--db` path). It's gitignored by
+default, so it isn't committed by accident. Deleting individual runs or
+tests isn't supported yet.
+
+**If you use the cache example workflow**, the database is uploaded to the
+GitHub Actions cache for your repository. It's evicted after 7 days without
+access ([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)).
+Treat it like any other CI artifact that can contain log text.
+
 ## Supported CI tools today
 
 pytest, Jest, Playwright. Adding a framework is one function in
@@ -569,6 +712,23 @@ along with representative sample logs.
 - [x] Custom rules from a JSON file (`FLAKY_FINDER_RULES_FILE`).
 - [ ] Custom rules in `history ingest` (needs a schema change; see "Custom
       rules").
+- [x] Failure signature groups: `analyze` groups its own results by which
+      rule decided them — see "Failure signature groups" above for what it
+      does and does not establish.
+- [ ] Normalized-evidence grouping (near-duplicate, not identical, error
+      text) — deferred until there's a documented normalization policy and
+      examples proving it doesn't merge genuinely unrelated failures (e.g.
+      two different internal hostnames in the same error shape).
+- [ ] Similarity- or LLM-based correlation across *different* rules (e.g.
+      guessing that a DNS failure and a timeout are one outage) — deferred
+      until there's a labeled, independently-verified multi-failure dataset
+      to measure it against, same reasoning as the single-failure
+      labeled-benchmark item above. Grouping failures that already share a
+      rule needed no such dataset; inferring a link between failures that
+      *don't* is a materially stronger claim and needs one.
+- [ ] Cross-run incident correlation (the history-tracking equivalent of
+      failure signature groups, across `failure_evidence` rows instead of
+      within one `analyze` run) — not started.
 
 ## Contributing
 

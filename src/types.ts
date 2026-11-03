@@ -39,6 +39,16 @@ export interface Rule {
 
 export type RuleOrigin = "builtin" | "custom";
 
+/** A rule that matched a failure's text — the winning rule's fields live on AnalysisResult itself; this shape is used for the others. */
+export interface RuleMatch {
+  ruleId: string;
+  ruleOrigin: RuleOrigin;
+  category: string;
+  verdict: Verdict;
+  matchStrength: MatchStrength;
+  evidenceLine: string;
+}
+
 export interface AnalysisResult {
   testName: string;
   framework: Failure["framework"];
@@ -52,4 +62,40 @@ export interface AnalysisResult {
   evidenceLine?: string;
   explanation: string;
   source: Source;
+  /**
+   * Present (possibly empty) whenever source is "rule": every OTHER rule that
+   * also matched this failure, in precedence order. They did not decide the
+   * verdict (first match wins) but are reported so no matching evidence is
+   * hidden.
+   */
+  alsoMatched?: RuleMatch[];
+}
+
+// A FailureGroup is a separate, additional VIEW over an existing array of
+// AnalysisResults — grouped by which rule decided their verdict. It never
+// changes a result: see src/failure-grouping.ts for the read-only contract.
+// "These failures matched the same rule" is an observation the data
+// supports directly. "These failures share one real-world cause" is a
+// hypothesis the data does NOT support on its own — two independent
+// failures can trivially produce the identical signature, and a single
+// real incident can just as easily produce several different ones. That's
+// why `limitation` is a fixed, always-present sentence, not something a
+// reader has to infer from the group existing at all.
+export interface FailureGroup {
+  /** Always "rule_id" today — the only grouping key this version implements. A distinct literal, not a free string, so adding a second grouping method later is a visible type change, not a silent string. */
+  groupingMethod: "rule_id";
+  ruleId: string;
+  ruleOrigin: RuleOrigin;
+  /** The grouped rule's own matchStrength. Weak-strength rules are excluded from grouping by default — see failure-grouping.ts. */
+  matchStrength: MatchStrength;
+  category: string;
+  /** Number of failure OBSERVATIONS in this group — not distinct tests. A test that fails twice under the same rule (e.g. a retry-plugin duplicate) counts twice here. */
+  occurrenceCount: number;
+  /** Number of DISTINCT test identities in this group. Can be less than occurrenceCount — see occurrenceCount's comment. */
+  affectedTestCount: number;
+  /** testName values (there is no classname available at this stage — unlike history's composite test id). */
+  affectedTestIds: string[];
+  /** Every observation's original AnalysisResult, unmodified — grouping is read-only. */
+  observations: AnalysisResult[];
+  limitation: string;
 }
