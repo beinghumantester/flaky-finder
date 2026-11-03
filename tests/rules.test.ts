@@ -153,3 +153,18 @@ test("conflicting evidence: precedence picks the verdict, but the co-occurring a
   assert.match(result.explanation, /also present.*not discarded/i);
   assert.match(result.explanation, /assertion mismatch/i);
 });
+
+test("when several rules match, the first in precedence order decides and every other match is listed in alsoMatched", () => {
+  const raw = "E   ECONNRESET while fetching\nE   Test timeout of 5000ms exceeded";
+  const result = classifyWithRules(failure(raw));
+  assert.equal(result.ruleId, "network-reset", "network-reset comes before timeout-exceeded in RULES");
+  assert.deepEqual(
+    result.alsoMatched?.map((m) => [m.ruleId, m.evidenceLine]),
+    [["timeout-exceeded", "E   Test timeout of 5000ms exceeded"]],
+  );
+});
+
+test("alsoMatched is an empty list (not missing) when only one rule matched, and absent for UNVERIFIED", () => {
+  assert.deepEqual(classifyWithRules(failure("ECONNRESET")).alsoMatched, []);
+  assert.equal(classifyWithRules(failure("assert 200 == 180")).alsoMatched, undefined);
+});

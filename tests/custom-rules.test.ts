@@ -96,3 +96,22 @@ test("without an explanation, a default one still cites the matched line", () =>
     /^Custom rule "internal-mirror-down" matched \(artifacts\.corp\.example\.com 503\)\./,
   );
 });
+
+test("a multi-line custom rule cites exactly the text it matched, never unrelated log text", () => {
+  const rules = parseCustomRules(
+    rulesJson({ ...INTERNAL_HOST_RULE, id: "db-refused", pattern: "connecting to db.*refused", flags: "s" }),
+  );
+  const result = classifyWithRules(failure("unrelated header line\nconnecting to db\nsome noise\nrefused"), rules);
+  assert.equal(result.ruleId, "db-refused");
+  assert.equal(result.evidenceLine, "connecting to db\nsome noise\nrefused");
+});
+
+test("a built-in rule that loses to a custom rule is still reported in alsoMatched", () => {
+  const rules = parseCustomRules(rulesJson(INTERNAL_HOST_RULE));
+  const result = classifyWithRules(failure("artifacts.corp.example.com: ECONNRESET"), rules);
+  assert.equal(result.ruleId, "internal-mirror-down");
+  assert.deepEqual(
+    result.alsoMatched?.map((m) => [m.ruleId, m.ruleOrigin]),
+    [["network-reset", "builtin"]],
+  );
+});

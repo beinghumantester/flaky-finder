@@ -1,4 +1,4 @@
-import type { Rule, Failure, AnalysisResult } from "./types.js";
+import type { Rule, Failure, AnalysisResult, RuleMatch } from "./types.js";
 
 // Bump this whenever a rule's pattern, verdict, or matchStrength changes.
 // History storage (history-ingest.ts) records this alongside every stored
@@ -133,9 +133,15 @@ function signalCaveat(category: string): string {
   return `This is a ${category} signature — it can occur for several different reasons, and the log alone does not establish which one, or whether the test is actually intermittent. Treat this as a lead to check, not a confirmed diagnosis.`;
 }
 
+// Evidence is always text the pattern actually matched — never a stand-in.
+// Usually that's the one full line containing the match (more readable than
+// a bare fragment). A custom rule using the `s` flag can match ACROSS lines,
+// so no single line matches on its own; then the evidence is the exact
+// matched text itself, which may span several lines. Only called after the
+// pattern has already matched rawText, so a match always exists.
 function findEvidenceLine(rawText: string, pattern: RegExp): string {
   const line = rawText.split("\n").find((l) => pattern.test(l));
-  return (line ?? rawText.slice(0, 160)).trim();
+  return (line ?? rawText.match(pattern)?.[0] ?? "").trim();
 }
 
 // A log can contain an environment signature AND a separate assertion
@@ -153,6 +159,17 @@ function findCoOccurringAssertion(rawText: string, evidenceLine: string): string
   return line ? line.trim() : null;
 }
 
+function toRuleMatch(rule: Rule, rawText: string): RuleMatch {
+  return {
+    ruleId: rule.id,
+    ruleOrigin: rule.origin ?? "builtin",
+    category: rule.category,
+    verdict: rule.verdict,
+    matchStrength: rule.matchStrength,
+    evidenceLine: findEvidenceLine(rawText, rule.pattern),
+  };
+}
+
 /**
  * Pure, deterministic, auditable classification. No model call, no guessing:
  * a failure that matches no known signature is UNVERIFIED, never rounded up
@@ -162,31 +179,37 @@ function findCoOccurringAssertion(rawText: string, evidenceLine: string): string
  * so a team's org-specific signature wins over a generic one.
  */
 export function classifyWithRules(failure: Failure, customRules: Rule[] = []): AnalysisResult {
-  for (const rule of [...customRules, ...RULES]) {
-    if (rule.pattern.test(failure.rawText)) {
-      const evidenceLine = findEvidenceLine(failure.rawText, rule.pattern);
-      const base = rule.explain(evidenceLine);
-      let explanation =
-        rule.verdict === "ENVIRONMENT_SIGNAL_DETECTED" ? `${base} ${signalCaveat(rule.category)}` : base;
-      if (rule.verdict === "ENVIRONMENT_SIGNAL_DETECTED") {
-        const coOccurring = findCoOccurringAssertion(failure.rawText, evidenceLine);
-        if (coOccurring) {
-          explanation += ` Also present in this log, not discarded: an apparent assertion mismatch ("${coOccurring}") — the environment signature above does not rule this out as a separate or contributing issue.`;
-        }
+  // Every rule is evaluated, not just up to the first match. Precedence
+  // (array order, custom rules first) picks the ONE rule that drives the
+  // verdict; every other rule that also matched is reported in alsoMatched
+  // rather than silently dropped — same reasoning as the co-occurring
+  // assertion above: a timeout in the same log as a connection reset is
+  // evidence a reader should see, even though it didn't win.
+  const matched = [...customRules, ...RULES].filter((rule) => rule.pattern.test(failure.rawText));
+  if (matched.length > 0) {
+    const [rule, ...others] = matched;
+    const evidenceLine = findEvidenceLine(failure.rawText, rule.pattern);
+    const base = rule.explain(evidenceLine);
+    let explanation = rule.verdict === "ENVIRONMENT_SIGNAL_DETECTED" ? `${base} ${signalCaveat(rule.category)}` : base;
+    if (rule.verdict === "ENVIRONMENT_SIGNAL_DETECTED") {
+      const coOccurring = findCoOccurringAssertion(failure.rawText, evidenceLine);
+      if (coOccurring) {
+        explanation += ` Also present in this log, not discarded: an apparent assertion mismatch ("${coOccurring}") — the environment signature above does not rule this out as a separate or contributing issue.`;
       }
-      return {
-        testName: failure.testName,
-        framework: failure.framework,
-        verdict: rule.verdict,
-        confidence: rule.matchStrength,
-        category: rule.category,
-        ruleId: rule.id,
-        ruleOrigin: rule.origin ?? "builtin",
-        evidenceLine,
-        explanation,
-        source: "rule",
-      };
     }
+    return {
+      testName: failure.testName,
+      framework: failure.framework,
+      verdict: rule.verdict,
+      confidence: rule.matchStrength,
+      category: rule.category,
+      ruleId: rule.id,
+      ruleOrigin: rule.origin ?? "builtin",
+      evidenceLine,
+      explanation,
+      source: "rule",
+      alsoMatched: others.map((other) => toRuleMatch(other, failure.rawText)),
+    };
   }
   return {
     testName: failure.testName,
