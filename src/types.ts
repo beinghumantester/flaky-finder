@@ -33,7 +33,11 @@ export interface Rule {
   /** Matched against Failure.rawText. Must be specific enough not to fire on ordinary assertion failures. */
   pattern: RegExp;
   explain: (evidenceLine: string) => string;
+  /** "custom" for a rule loaded from a team's rules file (custom-rules.ts); omitted for the built-in rules in rules.ts. */
+  origin?: RuleOrigin;
 }
+
+export type RuleOrigin = "builtin" | "custom";
 
 export interface AnalysisResult {
   testName: string;
@@ -43,6 +47,8 @@ export interface AnalysisResult {
   confidence: MatchStrength | Confidence;
   category?: string;
   ruleId?: string;
+  /** Set whenever source is "rule": whether the matching rule shipped with flaky-finder or came from a custom rules file. */
+  ruleOrigin?: RuleOrigin;
   evidenceLine?: string;
   explanation: string;
   source: Source;

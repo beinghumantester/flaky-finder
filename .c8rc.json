@@ -1,0 +1,11 @@
+{
+  "all": true,
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/types.ts", "src/history-types.ts"],
+  "reporter": ["text", "html", "lcov"],
+  "check-coverage": true,
+  "lines": 70,
+  "statements": 70,
+  "functions": 70,
+  "branches": 70
+}

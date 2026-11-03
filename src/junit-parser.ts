@@ -6,6 +6,8 @@
 // handle inputs nobody has reviewed; a narrow extractor whose failure mode is
 // "throws, or records a warning" is easier to audit.
 
+import { stripAnsi } from "./log-cleaning.js";
+
 export class JUnitParseError extends Error {}
 
 export type JUnitCaseStatus = "PASSED" | "FAILED" | "SKIPPED";
@@ -84,7 +86,9 @@ const SKIPPED_RE = /<skipped\b/;
  */
 export function parseJUnitXml(raw: string): JUnitParseResult {
   if (!/<testsuite\b/i.test(raw) && !/<testcase\b/i.test(raw)) {
-    throw new JUnitParseError("Input does not contain a <testsuite> or <testcase> element — not a recognized JUnit XML report.");
+    throw new JUnitParseError(
+      "Input does not contain a <testsuite> or <testcase> element — not a recognized JUnit XML report.",
+    );
   }
 
   const cases: JUnitCase[] = [];
@@ -109,7 +113,7 @@ export function parseJUnitXml(raw: string): JUnitParseResult {
       const failureOrErrorCount = (body.match(FAILURE_OR_ERROR_COUNT_RE) ?? []).length;
       if (failureOrErrorCount > 1) {
         warnings.push(
-          `<testcase name="${name}"> has ${failureOrErrorCount} <failure>/<error> elements — only the first (in document order) is used as evidence; the rest are not surfaced.`
+          `<testcase name="${name}"> has ${failureOrErrorCount} <failure>/<error> elements — only the first (in document order) is used as evidence; the rest are not surfaced.`,
         );
       }
       const failureMatch = body.match(FAILURE_OR_ERROR_RE);
@@ -118,7 +122,10 @@ export function parseJUnitXml(raw: string): JUnitParseResult {
         const [, , failureAttrs, failureBody] = failureMatch;
         const message = getAttr(failureAttrs, "message");
         const bodyText = failureBody ? decodeXmlEntities(failureBody.trim()) : "";
-        const combined = [message, bodyText].filter((part) => part && part.length > 0).join("\n");
+        // Color codes can arrive raw or as encoded entities (&#27;[31m) that
+        // only become escape characters after decoding — strip after decoding
+        // so the rule engine sees the same plain text either way.
+        const combined = stripAnsi([message, bodyText].filter((part) => part && part.length > 0).join("\n"));
         detail = combined.length > 0 ? combined : null;
       } else if (SKIPPED_RE.test(body)) {
         status = "SKIPPED";
@@ -140,7 +147,7 @@ export function parseJUnitXml(raw: string): JUnitParseResult {
   const unmatchedTagCount = rawTestcaseTagCount - index;
   if (unmatchedTagCount > 0) {
     warnings.push(
-      `Found ${rawTestcaseTagCount} <testcase> opening tag(s) but only matched ${index} complete element(s) — ${unmatchedTagCount} may be truncated or malformed and were silently excluded.`
+      `Found ${rawTestcaseTagCount} <testcase> opening tag(s) but only matched ${index} complete element(s) — ${unmatchedTagCount} may be truncated or malformed and were silently excluded.`,
     );
   }
 

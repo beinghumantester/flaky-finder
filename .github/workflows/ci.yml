@@ -14,10 +14,15 @@ jobs:
           node-version: "22"
       - run: npm install
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run coverage
       - run: npm run cli -- fixtures/pytest-sample.log
       - run: npm run cli -- fixtures/jest-sample.log
       - run: npm run cli -- fixtures/playwright-sample.log
+      - run: npm run cli -- analyze fixtures/github-actions-pytest.log
+      - name: --json output is valid JSON
+        run: npm run --silent cli -- analyze fixtures/pytest-sample.log --json | node -e 'JSON.parse(require("fs").readFileSync(0, "utf8"))'
       - name: history tracking smoke test (throwaway db, not persisted between jobs)
         run: |
           npm run cli -- history ingest fixtures/junit-sample.xml --commit "$GITHUB_SHA" --run-id "ci-$GITHUB_RUN_ID" --framework pytest --db /tmp/flaky-finder-history.db

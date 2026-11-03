@@ -10,21 +10,31 @@ import { parseLlmContent } from "../src/llm.js";
 
 test("SUSPECTED_REGRESSION is capped at low confidence even if the model claims medium", () => {
   const result = parseLlmContent(
-    JSON.stringify({ verdict: "SUSPECTED_REGRESSION", confidence: "medium", explanation: "looks like a real bug" })
+    JSON.stringify({ verdict: "SUSPECTED_REGRESSION", confidence: "medium", explanation: "looks like a real bug" }),
   );
   assert.equal(result.verdict, "SUSPECTED_REGRESSION");
-  assert.equal(result.confidence, "low", "a model claiming higher confidence than the contract allows must be overridden, not trusted");
+  assert.equal(
+    result.confidence,
+    "low",
+    "a model claiming higher confidence than the contract allows must be overridden, not trusted",
+  );
 });
 
 test("ENVIRONMENT_SIGNAL_DETECTED may reach medium confidence (not every verdict is capped at low)", () => {
   const result = parseLlmContent(
-    JSON.stringify({ verdict: "ENVIRONMENT_SIGNAL_DETECTED", confidence: "medium", explanation: "network-looking error" })
+    JSON.stringify({
+      verdict: "ENVIRONMENT_SIGNAL_DETECTED",
+      confidence: "medium",
+      explanation: "network-looking error",
+    }),
   );
   assert.equal(result.confidence, "medium");
 });
 
 test("an unrecognized verdict string falls back to UNVERIFIED, never passed through as-is", () => {
-  const result = parseLlmContent(JSON.stringify({ verdict: "DEFINITELY_FLAKY", confidence: "medium", explanation: "sure of it" }));
+  const result = parseLlmContent(
+    JSON.stringify({ verdict: "DEFINITELY_FLAKY", confidence: "medium", explanation: "sure of it" }),
+  );
   assert.equal(result.verdict, "UNVERIFIED");
 });
 
@@ -41,7 +51,7 @@ test("a missing or non-string explanation gets a safe default instead of crashin
 
 test("a confidence value other than exactly 'medium' defaults to low, not passed through unchecked", () => {
   const result = parseLlmContent(
-    JSON.stringify({ verdict: "ENVIRONMENT_SIGNAL_DETECTED", confidence: "extremely high", explanation: "x" })
+    JSON.stringify({ verdict: "ENVIRONMENT_SIGNAL_DETECTED", confidence: "extremely high", explanation: "x" }),
   );
   assert.equal(result.confidence, "low");
 });

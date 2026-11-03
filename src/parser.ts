@@ -1,4 +1,5 @@
 import type { Failure } from "./types.js";
+import { cleanLog } from "./log-cleaning.js";
 
 function parsePytest(raw: string): Failure[] {
   // Each failure block is framed by a line of underscores holding the test name:
@@ -40,9 +41,12 @@ function parsePlaywright(raw: string): Failure[] {
 /**
  * Detects the CI tool by its distinctive markers and delegates to that
  * framework's parser. Falls back to treating the whole input as one
- * failure rather than guessing at a format it doesn't recognize.
+ * failure rather than guessing at a format it doesn't recognize. ANSI
+ * escape codes and CI timestamp prefixes are stripped first — see
+ * log-cleaning.ts.
  */
-export function parseLog(raw: string): Failure[] {
+export function parseLog(input: string): Failure[] {
+  const raw = cleanLog(input);
   if (/^_{5,}\s+\S.*\s+_{5,}\s*$/m.test(raw)) return parsePytest(raw);
   if (/^\s*●\s/m.test(raw)) return parseJest(raw);
   if (/^\s*\d+\)\s+.*›/m.test(raw)) return parsePlaywright(raw);

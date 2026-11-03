@@ -1,0 +1,65 @@
+# Example: keep flaky-finder's history.db across ephemeral GitHub-hosted
+# runners using the Actions cache, so `history ingest` accumulates real run
+# history instead of starting empty on every job.
+#
+# How it works: a cache entry can't be overwritten, so every run SAVES under
+# a new, unique key and RESTORES the most recent entry via a key prefix
+# (restore-keys picks the most recently created match).
+#
+# Limits to know before relying on this (GitHub docs, "Dependency caching"):
+#   - A run can only restore caches from its own branch or the default
+#     branch. Run this on the default branch (as below) so there is one
+#     shared history.
+#   - Entries not accessed for 7 days are evicted, and a repo has a 10 GB
+#     cache limit by default. If no run happens for a week, history resets.
+#   - Two runs that overlap both restore the same old copy; whichever saves
+#     last wins and the other's ingestion is lost. The `concurrency` group
+#     below serializes runs to prevent that.
+#
+# Swap the "Run tests" step for your real test command that writes a JUnit
+# XML report (pytest --junitxml, jest-junit, playwright --reporter=junit).
+name: flaky-finder history (example)
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+
+concurrency:
+  group: flaky-finder-history
+  cancel-in-progress: false
+
+jobs:
+  record-history:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+
+      - name: Run tests (replace with your own; must write JUnit XML)
+        run: cp fixtures/junit-sample.xml test-results.xml
+
+      - name: Restore history database
+        uses: actions/cache/restore@v4
+        with:
+          path: .flaky-finder/history.db
+          key: flaky-finder-history-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: flaky-finder-history-
+
+      - name: Record this run
+        if: ${{ !cancelled() }}
+        run: |
+          npm run cli -- history ingest test-results.xml \
+            --commit "$GITHUB_SHA" \
+            --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          npm run cli -- history report
+
+      - name: Save history database
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@v4
+        with:
+          path: .flaky-finder/history.db
+          key: flaky-finder-history-${{ github.run_id }}-${{ github.run_attempt }}

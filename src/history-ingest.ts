@@ -45,7 +45,12 @@ function emptyCounts(): Record<TestOutcome, number> {
  * so every such ingestion is treated as new (no dedup protection without a
  * stable id to dedup against).
  */
-export function ingestJUnitReport(db: DatabaseSync, sourceFile: string, raw: string, options: IngestOptions = {}): IngestResult {
+export function ingestJUnitReport(
+  db: DatabaseSync,
+  sourceFile: string,
+  raw: string,
+  options: IngestOptions = {},
+): IngestResult {
   const reportHash = createHash("sha256").update(raw).digest("hex");
   const runId = options.runId ?? `run-${Date.now()}`;
 
@@ -53,11 +58,16 @@ export function ingestJUnitReport(db: DatabaseSync, sourceFile: string, raw: str
   // the ingestions table in history-db.ts. Two different runs with
   // identical content must both be recorded; only a repeat of the SAME run
   // (same run_id) with the same content is a duplicate.
-  const existing = db.prepare("SELECT id, ingested_at FROM ingestions WHERE run_id = ? AND report_hash = ?").get(runId, reportHash) as
-    | { id: number; ingested_at: string }
-    | undefined;
+  const existing = db
+    .prepare("SELECT id, ingested_at FROM ingestions WHERE run_id = ? AND report_hash = ?")
+    .get(runId, reportHash) as { id: number; ingested_at: string } | undefined;
   if (existing) {
-    return { skipped: true, reason: "duplicate", existingIngestionId: existing.id, existingIngestedAt: existing.ingested_at };
+    return {
+      skipped: true,
+      reason: "duplicate",
+      existingIngestionId: existing.id,
+      existingIngestedAt: existing.ingested_at,
+    };
   }
 
   const { cases, warnings } = parseJUnitXml(raw);
@@ -71,13 +81,13 @@ export function ingestJUnitReport(db: DatabaseSync, sourceFile: string, raw: str
   const ingestedAt = new Date().toISOString();
 
   const insertIngestion = db.prepare(
-    "INSERT INTO ingestions (report_hash, run_id, commit_sha, environment_id, framework, source_file, ingested_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO ingestions (report_hash, run_id, commit_sha, environment_id, framework, source_file, ingested_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
   );
   const insertRun = db.prepare(
-    "INSERT INTO test_runs (ingestion_id, test_id, test_name, classname, framework, outcome, run_id, commit_sha, environment_id, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO test_runs (ingestion_id, test_id, test_name, classname, framework, outcome, run_id, commit_sha, environment_id, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   );
   const insertEvidence = db.prepare(
-    "INSERT INTO failure_evidence (test_run_id, verdict, rule_id, ruleset_version, evidence_line, explanation) VALUES (?, ?, ?, ?, ?, ?)"
+    "INSERT INTO failure_evidence (test_run_id, verdict, rule_id, ruleset_version, evidence_line, explanation) VALUES (?, ?, ?, ?, ?, ?)",
   );
 
   const counts = emptyCounts();
@@ -92,7 +102,15 @@ export function ingestJUnitReport(db: DatabaseSync, sourceFile: string, raw: str
   // better-sqlite3), so this is a manual BEGIN/COMMIT/ROLLBACK.
   db.exec("BEGIN");
   try {
-    const ingestionInfo = insertIngestion.run(reportHash, runId, commitSha, environmentId, framework, sourceFile, ingestedAt);
+    const ingestionInfo = insertIngestion.run(
+      reportHash,
+      runId,
+      commitSha,
+      environmentId,
+      framework,
+      sourceFile,
+      ingestedAt,
+    );
     ingestionId = Number(ingestionInfo.lastInsertRowid);
 
     for (const testCase of cases) {
@@ -107,7 +125,7 @@ export function ingestJUnitReport(db: DatabaseSync, sourceFile: string, raw: str
         runId,
         commitSha,
         environmentId,
-        ingestedAt
+        ingestedAt,
       );
       counts[testCase.status] += 1;
 
@@ -123,7 +141,7 @@ export function ingestJUnitReport(db: DatabaseSync, sourceFile: string, raw: str
           null,
           null,
           null,
-          "No failure detail was present in the report for this test — the signature engine needs error text, and this report didn't include any."
+          "No failure detail was present in the report for this test — the signature engine needs error text, and this report didn't include any.",
         );
         continue;
       }
@@ -135,7 +153,7 @@ export function ingestJUnitReport(db: DatabaseSync, sourceFile: string, raw: str
         result.ruleId ?? null,
         result.source === "rule" ? RULESET_VERSION : null,
         result.evidenceLine ?? null,
-        result.explanation
+        result.explanation,
       );
     }
 

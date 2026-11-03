@@ -33,7 +33,9 @@ function skipCase(classname: string, name: string): string {
 
 test("ingesting a JUnit report records one test_runs row per test case, with correct outcomes", () => {
   const db = freshDb();
-  const raw = junit(passCase("pkg.mod", "test_a") + failCase("pkg.mod", "test_b", "boom", "ECONNRESET: socket hang up"));
+  const raw = junit(
+    passCase("pkg.mod", "test_a") + failCase("pkg.mod", "test_b", "boom", "ECONNRESET: socket hang up"),
+  );
   const result = ingestJUnitReport(db, "report.xml", raw, { commitSha: "c1", runId: "r1", framework: "pytest" });
   assert.equal(result.skipped, false);
   if (result.skipped) throw new Error("unreachable");
@@ -43,7 +45,11 @@ test("ingesting a JUnit report records one test_runs row per test case, with cor
   const summary = summarizeTest(db, buildTestId("pytest", "pkg.mod", "test_b"));
   assert.ok(summary);
   assert.equal(summary!.counts.FAILED, 1);
-  assert.equal(summary!.recentRuns[0].ruleId, "network-reset", "a failed case's text should be classified by the existing rule engine during ingestion");
+  assert.equal(
+    summary!.recentRuns[0].ruleId,
+    "network-reset",
+    "a failed case's text should be classified by the existing rule engine during ingestion",
+  );
 });
 
 test("duplicate ingestion: re-ingesting byte-identical report content is detected and skipped, not double counted", () => {
@@ -92,7 +98,11 @@ test("a skipped test case is recorded as SKIPPED through the real ingest -> summ
   const summary = summarizeTest(db, buildTestId("generic", "pkg", "test_not_ready"));
   assert.ok(summary);
   assert.deepEqual(summary!.counts, { PASSED: 0, FAILED: 0, SKIPPED: 1, UNKNOWN: 0 });
-  assert.equal(summary!.assessment, "INSUFFICIENT_HISTORY", "a single skipped run is neither a pass nor a fail, so this is not PASS_ONLY");
+  assert.equal(
+    summary!.assessment,
+    "INSUFFICIENT_HISTORY",
+    "a single skipped run is neither a pass nor a fail, so this is not PASS_ONLY",
+  );
   assert.equal(summary!.recentRuns[0].outcome, "SKIPPED");
 });
 
@@ -137,7 +147,11 @@ test("changed commits: failing on one commit then passing on a DIFFERENT commit 
     { outcome: "FAILED", commitSha: "c1" },
     { outcome: "PASSED", commitSha: "c2" },
   ]);
-  assert.notEqual(result.assessment, "INTERMITTENCY_OBSERVED", "a fix between commits must not be reported as flakiness evidence");
+  assert.notEqual(
+    result.assessment,
+    "INTERMITTENCY_OBSERVED",
+    "a fix between commits must not be reported as flakiness evidence",
+  );
   assert.equal(result.assessment, "INSUFFICIENT_HISTORY");
 });
 
@@ -158,7 +172,7 @@ test("two runs with no commit_sha recorded at all are never treated as 'the same
   assert.notEqual(
     result.assessment,
     "INTERMITTENCY_OBSERVED",
-    "two runs with no commit recorded don't establish 'same code' — this must not be upgraded to intermittency evidence"
+    "two runs with no commit recorded don't establish 'same code' — this must not be upgraded to intermittency evidence",
   );
   assert.equal(result.assessment, "INSUFFICIENT_HISTORY");
 });
@@ -184,7 +198,11 @@ test("ambiguous test identities: two different tests that both omit classname DO
   const testId = buildTestId("generic", null, "test_shared");
   const summary = summarizeTest(db, testId);
   assert.ok(summary, "both ingestions must land under the same merged identity when classname is absent for both");
-  assert.equal(summary!.totalRuns, 2, "history for two unrelated tests gets merged under this limitation — by design, not a bug, and must be documented");
+  assert.equal(
+    summary!.totalRuns,
+    2,
+    "history for two unrelated tests gets merged under this limitation — by design, not a bug, and must be documented",
+  );
 });
 
 test("history show's ambiguity handling: a name query matching multiple distinct test_ids lists all of them rather than guessing one", () => {
@@ -192,7 +210,11 @@ test("history show's ambiguity handling: a name query matching multiple distinct
   ingestJUnitReport(db, "a.xml", junit(passCase("suite.one", "test_login")), { runId: "r1" });
   ingestJUnitReport(db, "b.xml", junit(passCase("suite.two", "test_login")), { runId: "r2" });
   const matches = listTrackedTestIds(db, { nameQuery: "test_login" });
-  assert.equal(matches.length, 2, "distinct classnames must produce two separate, listed matches rather than one tool silently picking one");
+  assert.equal(
+    matches.length,
+    2,
+    "distinct classnames must produce two separate, listed matches rather than one tool silently picking one",
+  );
 });
 
 // --- per-test summaries / report ------------------------------------------
@@ -205,7 +227,11 @@ test("Finding 1: two separate runs with byte-identical content but DIFFERENT run
   const runA = ingestJUnitReport(db, "a.xml", raw, { runId: "run-A", commitSha: "c1" });
   const runB = ingestJUnitReport(db, "b.xml", raw, { runId: "run-B", commitSha: "c1" });
   assert.equal(runA.skipped, false, "the first legitimate run must be recorded");
-  assert.equal(runB.skipped, false, "a second legitimate run with identical content but a different run_id must NOT be discarded as a duplicate");
+  assert.equal(
+    runB.skipped,
+    false,
+    "a second legitimate run with identical content but a different run_id must NOT be discarded as a duplicate",
+  );
 
   const summary = summarizeTest(db, buildTestId("generic", "pkg", "test_a"));
   assert.equal(summary!.totalRuns, 2, "both runs must be present in history");
@@ -223,9 +249,14 @@ test("Finding 1: re-ingesting the same content under the SAME run id is still co
 test("Finding 2: foreign-key constraints are actually enforced, not just declared", () => {
   const db = freshDb();
   assert.throws(
-    () => db.prepare("INSERT INTO failure_evidence (test_run_id, verdict, rule_id, ruleset_version, evidence_line, explanation) VALUES (?, ?, ?, ?, ?, ?)").run(999999, "UNVERIFIED", null, null, null, null),
+    () =>
+      db
+        .prepare(
+          "INSERT INTO failure_evidence (test_run_id, verdict, rule_id, ruleset_version, evidence_line, explanation) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .run(999999, "UNVERIFIED", null, null, null, null),
     /FOREIGN KEY/i,
-    "inserting failure_evidence against a test_run_id that doesn't exist must be rejected, not silently create an orphan row"
+    "inserting failure_evidence against a test_run_id that doesn't exist must be rejected, not silently create an orphan row",
   );
 });
 
@@ -236,44 +267,68 @@ test("Finding 3: assessHistory filters SKIPPED/UNKNOWN points itself, not just v
   const result = assessHistory([
     { outcome: "FAILED", commitSha: "c1" },
     { outcome: "FAILED", commitSha: "c1" },
-    { outcome: "SKIPPED" as any, commitSha: "c1" },
+    { outcome: "SKIPPED", commitSha: "c1" },
   ]);
-  assert.equal(result.assessment, "FAILURE_REPEATED", "a SKIPPED point passed directly to assessHistory must not corrupt the result");
+  assert.equal(
+    result.assessment,
+    "FAILURE_REPEATED",
+    "a SKIPPED point passed directly to assessHistory must not corrupt the result",
+  );
 });
 
 test("Finding 4a: an out-of-range numeric XML entity does not crash the parser", () => {
   const raw = junit(failCase("pkg", "test_x", "bad entity", "value &#1114112; is out of Unicode range"));
   assert.doesNotThrow(() => parseJUnitXml(raw));
   const { cases } = parseJUnitXml(raw);
-  assert.match(cases[0].detail ?? "", /&#1114112;/, "an entity that can't be decoded must fall back to the literal text, not disappear or crash");
+  assert.match(
+    cases[0].detail ?? "",
+    /&#1114112;/,
+    "an entity that can't be decoded must fall back to the literal text, not disappear or crash",
+  );
 });
 
 test("Finding 4b: a testcase with BOTH <failure> and <error> elements uses only the first and warns about the rest", () => {
-  const raw = junit(`<testcase classname="pkg" name="test_dual" time="0.1"><failure message="first">first detail</failure><error message="second">second detail</error></testcase>`);
+  const raw = junit(
+    `<testcase classname="pkg" name="test_dual" time="0.1"><failure message="first">first detail</failure><error message="second">second detail</error></testcase>`,
+  );
   const { cases, warnings } = parseJUnitXml(raw);
   assert.equal(cases[0].status, "FAILED");
   assert.match(cases[0].detail ?? "", /first detail/);
   assert.doesNotMatch(cases[0].detail ?? "", /second detail/);
-  assert.ok(warnings.some((w) => /2 <failure>\/<error>/.test(w)), "must warn that a second failure/error element was not surfaced");
+  assert.ok(
+    warnings.some((w) => /2 <failure>\/<error>/.test(w)),
+    "must warn that a second failure/error element was not surfaced",
+  );
 });
 
 test("Finding 4c: a truncated <testcase> (no closing tag, cut off mid-report) is excluded with a warning, not silently miscounted", () => {
   const raw = `<testsuite name="s">${passCase("pkg", "test_complete")}<testcase classname="pkg" name="test_truncated" time="0.1">`;
   const { cases, warnings } = parseJUnitXml(raw);
   assert.equal(cases.length, 1, "only the well-formed case should be returned");
-  assert.ok(warnings.some((w) => /truncated or malformed/.test(w)), "the truncated tag must be flagged, not silently dropped");
+  assert.ok(
+    warnings.some((w) => /truncated or malformed/.test(w)),
+    "the truncated tag must be flagged, not silently dropped",
+  );
 });
 
 test("Finding 4d: a report using XML namespaces (<ns:testsuite>/<ns:testcase>) is not silently misread as zero tests — it fails loudly instead", () => {
   const raw = `<ns:testsuite xmlns:ns="urn:example"><ns:testcase name="test_a"/></ns:testsuite>`;
-  assert.throws(() => parseJUnitXml(raw), JUnitParseErrorFromParser, "a namespaced report isn't recognized by this parser — documented limitation, surfaced as a clear error");
+  assert.throws(
+    () => parseJUnitXml(raw),
+    JUnitParseErrorFromParser,
+    "a namespaced report isn't recognized by this parser — documented limitation, surfaced as a clear error",
+  );
 });
 
 test("Finding 4e: duplicate <testcase> entries (same name+classname) within one report are preserved as separate cases, not collapsed", () => {
   const raw = junit(failCase("pkg", "test_retry", "first try", "ECONNRESET") + passCase("pkg", "test_retry"));
   const { cases } = parseJUnitXml(raw);
   const matching = cases.filter((c) => c.name === "test_retry");
-  assert.equal(matching.length, 2, "a report with the same test listed twice (e.g. a rerun plugin) must produce two distinct case entries, not one");
+  assert.equal(
+    matching.length,
+    2,
+    "a report with the same test listed twice (e.g. a rerun plugin) must produce two distinct case entries, not one",
+  );
   assert.equal(matching[0].status, "FAILED");
   assert.equal(matching[1].status, "PASSED");
 });
@@ -325,13 +380,20 @@ test("transaction safety (integration): ingestJUnitReport itself rolls back ever
   `);
 
   const raw = junit(passCase("pkg", "test_ok") + passCase("pkg", "__poison__"));
-  assert.throws(() => ingestJUnitReport(db, "report.xml", raw, { runId: "r1", commitSha: "c1" }), /simulated failure for integration rollback test/);
+  assert.throws(
+    () => ingestJUnitReport(db, "report.xml", raw, { runId: "r1", commitSha: "c1" }),
+    /simulated failure for integration rollback test/,
+  );
 
   const ingestionCount = (db.prepare("SELECT COUNT(*) as n FROM ingestions").get() as { n: number }).n;
   const runCount = (db.prepare("SELECT COUNT(*) as n FROM test_runs").get() as { n: number }).n;
   const evidenceCount = (db.prepare("SELECT COUNT(*) as n FROM failure_evidence").get() as { n: number }).n;
   assert.equal(ingestionCount, 0, "the ingestion row must be rolled back");
-  assert.equal(runCount, 0, "test_ok's row — inserted successfully BEFORE the poisoned row — must be rolled back too, not left committed");
+  assert.equal(
+    runCount,
+    0,
+    "test_ok's row — inserted successfully BEFORE the poisoned row — must be rolled back too, not left committed",
+  );
   assert.equal(evidenceCount, 0);
 });
 
@@ -343,10 +405,10 @@ test("transaction safety (lower-level): a write that fails partway through an in
   // standing in for "any write fails here."
   const db = freshDb();
   const insertIngestion = db.prepare(
-    "INSERT INTO ingestions (report_hash, run_id, commit_sha, environment_id, framework, source_file, ingested_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO ingestions (report_hash, run_id, commit_sha, environment_id, framework, source_file, ingested_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
   );
   const insertRun = db.prepare(
-    "INSERT INTO test_runs (ingestion_id, test_id, test_name, classname, framework, outcome, run_id, commit_sha, environment_id, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO test_runs (ingestion_id, test_id, test_name, classname, framework, outcome, run_id, commit_sha, environment_id, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   );
 
   assert.throws(() => {
@@ -355,9 +417,31 @@ test("transaction safety (lower-level): a write that fails partway through an in
       const info = insertIngestion.run("hash1", "run1", null, null, "generic", "f.xml", "2026-01-01T00:00:00Z");
       const ingestionId = Number(info.lastInsertRowid);
       // This first row is entirely valid and would succeed on its own.
-      insertRun.run(ingestionId, "id1", "test_ok", null, "generic", "PASSED", "run1", null, null, "2026-01-01T00:00:00Z");
+      insertRun.run(
+        ingestionId,
+        "id1",
+        "test_ok",
+        null,
+        "generic",
+        "PASSED",
+        "run1",
+        null,
+        null,
+        "2026-01-01T00:00:00Z",
+      );
       // This second row violates the CHECK(outcome IN (...)) constraint.
-      insertRun.run(ingestionId, "id2", "test_bad", null, "generic", "BOGUS", "run1", null, null, "2026-01-01T00:00:00Z");
+      insertRun.run(
+        ingestionId,
+        "id2",
+        "test_bad",
+        null,
+        "generic",
+        "BOGUS",
+        "run1",
+        null,
+        null,
+        "2026-01-01T00:00:00Z",
+      );
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");
@@ -368,15 +452,25 @@ test("transaction safety (lower-level): a write that fails partway through an in
   const ingestionCount = (db.prepare("SELECT COUNT(*) as n FROM ingestions").get() as { n: number }).n;
   const runCount = (db.prepare("SELECT COUNT(*) as n FROM test_runs").get() as { n: number }).n;
   assert.equal(ingestionCount, 0, "the ingestion row must be rolled back even though its own INSERT succeeded");
-  assert.equal(runCount, 0, "the earlier VALID test_runs row (test_ok) must also be rolled back — it was part of the same failed transaction, not committed separately");
+  assert.equal(
+    runCount,
+    0,
+    "the earlier VALID test_runs row (test_ok) must also be rolled back — it was part of the same failed transaction, not committed separately",
+  );
 });
 
 test("reportAll surfaces INTERMITTENCY_OBSERVED and FAILURE_REPEATED ahead of PASS_ONLY", () => {
   const db = freshDb();
-  ingestJUnitReport(db, "a.xml", junit(passCase("s", "test_ok") + passCase("s", "test_ok")), { runId: "r1", commitSha: "c1" });
+  ingestJUnitReport(db, "a.xml", junit(passCase("s", "test_ok") + passCase("s", "test_ok")), {
+    runId: "r1",
+    commitSha: "c1",
+  });
   // second run for test_ok to make it PASS_ONLY with 2 runs
   ingestJUnitReport(db, "b.xml", junit(passCase("s", "test_ok")), { runId: "r2", commitSha: "c1" });
-  ingestJUnitReport(db, "c.xml", junit(failCase("s", "test_flaky", "x", "ECONNRESET")), { runId: "r3", commitSha: "c2" });
+  ingestJUnitReport(db, "c.xml", junit(failCase("s", "test_flaky", "x", "ECONNRESET")), {
+    runId: "r3",
+    commitSha: "c2",
+  });
   ingestJUnitReport(db, "d.xml", junit(passCase("s", "test_flaky")), { runId: "r4", commitSha: "c2" });
 
   const summaries = reportAll(db);

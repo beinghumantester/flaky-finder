@@ -1,0 +1,28 @@
+name: Bug report
+description: Wrong verdict, a crash, or a parser that missed a failure
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did flaky-finder output, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log excerpt
+      description: The smallest log (or JUnit XML) that reproduces it. Remove secrets first.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command you ran
+      placeholder: npm run cli -- path/to/log
+  - type: input
+    id: version
+    attributes:
+      label: flaky-finder version / commit and Node.js version

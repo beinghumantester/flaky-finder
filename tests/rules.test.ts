@@ -15,7 +15,9 @@ test("network reset is classified ENVIRONMENT_SIGNAL_DETECTED with an exact matc
 });
 
 test("stale element reference is classified ENVIRONMENT_SIGNAL_DETECTED", () => {
-  const result = classifyWithRules(failure("StaleElementReferenceException: stale element reference: element is not attached to the page document"));
+  const result = classifyWithRules(
+    failure("StaleElementReferenceException: stale element reference: element is not attached to the page document"),
+  );
   assert.equal(result.verdict, "ENVIRONMENT_SIGNAL_DETECTED");
 });
 
@@ -62,7 +64,8 @@ test("a timeout caused by a genuine regression still only gets ENVIRONMENT_SIGNA
 const RULE_PROBES: Record<string, string> = {
   "network-reset": "ECONNRESET: socket hang up",
   "port-in-use": "Error: listen EADDRINUSE: address already in use :::3000",
-  "stale-dom-element": "StaleElementReferenceException: stale element reference: element is not attached to the page document",
+  "stale-dom-element":
+    "StaleElementReferenceException: stale element reference: element is not attached to the page document",
   "dns-resolution": "Error: getaddrinfo ENOTFOUND api.example.com",
   "timeout-exceeded": "Error: Test timeout of 30000ms exceeded.",
   "locator-target-closed": "Error: locator.click: Target closed",
@@ -83,7 +86,7 @@ test("every ENVIRONMENT_SIGNAL_DETECTED rule's explanation carries the signal-is
     assert.match(
       result.explanation,
       /actually intermittent|not a confirmed diagnosis/i,
-      `rule ${rule.id} must carry the signal-is-not-proof caveat`
+      `rule ${rule.id} must carry the signal-is-not-proof caveat`,
     );
     // The category framing itself must stay hedged ("can occur for several
     // reasons"), not assert a specific cause as fact — that was the exact
@@ -91,7 +94,7 @@ test("every ENVIRONMENT_SIGNAL_DETECTED rule's explanation carries the signal-is
     assert.match(
       result.explanation,
       /can occur for several different reasons/i,
-      `rule ${rule.id}'s category framing must stay hedged, not assert a specific cause as fact`
+      `rule ${rule.id}'s category framing must stay hedged, not assert a specific cause as fact`,
     );
   }
 });
@@ -99,7 +102,7 @@ test("every ENVIRONMENT_SIGNAL_DETECTED rule's explanation carries the signal-is
 test("the deterministic rule engine never assigns SUSPECTED_REGRESSION — that verdict only exists for the constrained, optional LLM step", () => {
   assert.ok(
     RULES.every((rule) => rule.verdict !== "SUSPECTED_REGRESSION"),
-    "a rule engine that only sees ONE run of logs has no basis to positively diagnose a regression"
+    "a rule engine that only sees ONE run of logs has no basis to positively diagnose a regression",
   );
 });
 
@@ -109,12 +112,13 @@ test("precedence: when a log contains two known signatures, the first rule in RU
   // Deliberately construct a log with BOTH a network-reset signature (rule 1,
   // unambiguous) and a locator-target-closed signature (rule 6, looser
   // match). The precedence comment on RULES says more-unambiguous-first wins.
-  const raw = [
-    "ECONNRESET: socket hang up",
-    "Error: locator.click: Target closed",
-  ].join("\n");
+  const raw = ["ECONNRESET: socket hang up", "Error: locator.click: Target closed"].join("\n");
   const result = classifyWithRules(failure(raw));
-  assert.equal(result.ruleId, "network-reset", "the earlier, more unambiguous rule should win over a later, looser one");
+  assert.equal(
+    result.ruleId,
+    "network-reset",
+    "the earlier, more unambiguous rule should win over a later, looser one",
+  );
 });
 
 test("empty log does not crash and does not invent a failure", () => {
