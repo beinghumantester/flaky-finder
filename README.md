@@ -1,107 +1,149 @@
 # flaky-finder
 
-A small, auditable rule engine that reads a CI test-failure log and reports,
-for each failure, one of: `ENVIRONMENT_SIGNAL_DETECTED`, `SUSPECTED_REGRESSION`,
-or `UNVERIFIED` — with the exact log line as evidence, and an explicit
-statement of what that evidence does and doesn't establish.
+flaky-finder is a small rule engine you can audit. It reads a CI test failure
+log and gives each failure one of three statuses: `ENVIRONMENT_SIGNAL_DETECTED`,
+`SUSPECTED_REGRESSION`, or `UNVERIFIED`. Every status comes with the exact log
+line it is based on, and a plain statement of what that line does and does
+not prove.
 
-**This is not a flaky-test detector.** It cannot tell you a test is actually
-intermittent — nothing can, from a single log. What it does is the narrower,
-honest thing: identify known non-product failure signatures (network resets,
-timeouts, stale DOM elements, DB lock contention, ...) without ever
-pretending that identifying a signature proves the test is flaky, or that
-its absence proves a real bug.
+**This is not a flaky test detector.** No tool can tell you that a test is
+truly intermittent by looking at a single log. What flaky-finder does is
+narrower and more honest. It spots well known failure signatures that usually
+come from outside the product (network resets, timeouts, stale DOM elements,
+database lock contention, and so on). It never pretends that finding one of
+these signatures proves a test is flaky, and it never pretends that finding
+none proves there is a real bug.
+
+## Contents
+
+- [The problem](#the-problem)
+- [Why not just paste the log into an AI assistant?](#why-not-just-paste-the-log-into-an-ai-assistant)
+- [What each status means, exactly](#what-each-status-means-exactly)
+- [Prior art](#prior-art)
+- [Getting started](#getting-started)
+- [Features](#features)
+- [Historical tracking](#historical-tracking)
+- [Data handling and privacy](#data-handling-and-privacy)
+- [Limitations](#limitations)
+- [Supported CI tools](#supported-ci-tools)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## The problem
 
-Every team with a CI pipeline has the same recurring, unglamorous moment: a
-test fails, and someone decides "is this real, or just flaky — can we
-merge?" by eyeballing a stack trace and re-running the job. That triage is
-repetitive, inconsistent between people, and leaves no record of *why* a
-failure was waved off.
+Every team with a CI pipeline knows this moment. A test fails, and someone
+has to decide whether the failure is real or just flaky, and whether it is
+safe to merge. Usually that means staring at a stack trace and running the
+job again. This kind of triage is repetitive, different people judge it
+differently, and nobody keeps a record of *why* a failure was waved off.
 
 ## Why not just paste the log into an AI assistant?
 
-You can, and it will give you a confident-sounding answer. The actual
-difference isn't that an assistant *can't* express uncertainty — it can.
-The difference is that here, uncertainty is a **fixed part of the tool's
-contract**, not something that depends on how the prompt was worded that day:
+You can, and you will get a confident answer. The real difference is not
+that an assistant *cannot* express uncertainty, because it can. The
+difference is that in flaky-finder, uncertainty is a **fixed part of how the
+tool works**. It does not depend on how the prompt happened to be worded that
+day.
 
-- **Deterministic by default.** The rule engine is plain code: identical
-  input and rule set produce identical output, every time — the LLM step is
-  optional and off unless you configure it.
-- **Evidence over inference.** Every verdict cites the exact matching line.
-  That's an observation you can review, not a claim you have to trust.
-- **It is structurally not allowed to overclaim.** `ENVIRONMENT_SIGNAL_DETECTED`
-  means "this specific signature is present in the text" — not "this test is
-  flaky." A failure matching nothing gets `UNVERIFIED`, which is a correct,
-  common, and intentional outcome, not a fallback to be minimized.
+- **Deterministic by default.** The rule engine is plain code. The same input
+  and the same rules always produce the same output. The LLM step is
+  optional and stays off unless you turn it on.
+- **Evidence over inference.** Every verdict quotes the exact line that
+  matched. That is an observation you can check yourself, not a claim you
+  have to trust.
+- **It is not allowed to overclaim.** `ENVIRONMENT_SIGNAL_DETECTED` means
+  "this specific signature appears in the text". It does not mean "this test
+  is flaky". A failure that matches nothing is marked `UNVERIFIED`, and that
+  is a correct, common and intended result, not a fallback to be avoided.
 
-The optional LLM fallback (any OpenAI-chat-compatible open-weight-model
-endpoint — Groq, Ollama, OpenRouter, ...) only runs on the residual cases the
-rules don't recognize, and is held to the same contract: its
-`SUSPECTED_REGRESSION` verdict is capped at low confidence in code, not just
-by asking the model nicely.
+The optional LLM fallback works with any endpoint that speaks the OpenAI chat
+format and serves an open weight model, such as Groq, Ollama or OpenRouter.
+It only looks at the leftover failures that the rules did not recognize, and
+it follows the same rules as everything else. A `SUSPECTED_REGRESSION`
+verdict from the model is capped at low confidence in the code itself, not
+just by asking the model nicely.
 
-This carries over the grounding discipline behind
+This follows the same grounding approach as
 [`camelid-evals`](https://github.com/beinghumantester/camelid-evals): never
-let a plausible-sounding claim stand in for cited evidence, and never round
-insufficient evidence up to a confident answer.
+let a believable claim stand in for real evidence, and never turn weak
+evidence into a confident answer.
 
 ## What each status means, exactly
 
-- **`ENVIRONMENT_SIGNAL_DETECTED`** — a configured rule matched a known
-  non-product signature in the supplied log text. Nothing more.
-- **`UNVERIFIED`** — the available rules did not establish a supported
-  classification for this failure. This is a correct, common outcome, not
+- **`ENVIRONMENT_SIGNAL_DETECTED`**: a rule matched a known signature in the
+  log text that usually points away from the product itself. Nothing more
+  than that.
+- **`UNVERIFIED`**: the available rules could not support any
+  classification for this failure. This is a correct and common result, not
   a weaker version of the other two.
-- **Neither status establishes the root cause.** Neither establishes
-  whether the test is actually intermittent. A signal is a lead to check,
-  not permission to retry, ignore, or dismiss a failure — if you wire this
-  into CI, that policy belongs in your own gating logic, not assumed from
-  this tool's output (see the Roadmap's "advisory-only" note).
+- **Neither status tells you the root cause**, and neither tells you whether
+  the test is truly intermittent. A signal is a lead worth checking. It is
+  not permission to retry, ignore or dismiss a failure. If you plug this
+  into CI, that policy belongs in your own gating logic and should not be
+  assumed from this tool's output (see the "advisory only" note in the
+  [Roadmap](#roadmap)).
 
-The `signature-match: exact/strong/weak` value next to a rule-based result
-is **not a confidence score** — rule matching is plain string/regex
-presence-or-absence, so there's no calculation behind a number, and
-labeling it "confidence" would claim one exists. It describes how
-unambiguous the matched text itself is as a signature: `exact` for an error
-code essentially unique to one cause (`ECONNRESET`, `EADDRINUSE`), `strong`
-for a specific but slightly more interpretive phrase, `weak` for something
-looser. Only the optional LLM step reports an actual `confidence` — its own
-stated confidence in its classification, which is a different, legitimate
-use of the word (and is capped at `low` for `SUSPECTED_REGRESSION`
-in code, not just by asking the model nicely). Note what the cap does and
-doesn't mean: `low` confidence means the model itself is uncertain. It does
-**not** mean a `medium`-confidence or rule-based result is "well-grounded" —
-grounding comes from the cited evidence line being real and relevant, which
-is yours to check, not something either number certifies.
+The `signature-match: exact/strong/weak` label next to a rule result is
+**not a confidence score**. Rule matching only checks whether some text is
+present or not, so there is no calculation that could produce a number, and
+calling it "confidence" would suggest there is one. The label describes how
+clearly the matched text points to one cause:
 
-## Prior art — this is a crowded space, and worth knowing before you adopt this
+- `exact`: an error code that almost always means one thing, such as
+  `ECONNRESET` or `EADDRINUSE`
+- `strong`: a specific phrase that needs a little more interpretation
+- `weak`: a looser phrase with more room for a false match
 
-Two existing projects do substantially more than this one:
+Only the optional LLM step reports a real `confidence`, which is the model's
+own stated confidence in its answer. That is a different and legitimate use
+of the word, and it is capped at `low` for `SUSPECTED_REGRESSION` in code.
+Be clear about what the cap means: `low` confidence means the model itself
+is unsure. It does **not** mean that a `medium` confidence or rule based
+result is "well grounded". Grounding comes from the quoted evidence line
+being real and relevant, and checking that is up to you. Neither label
+guarantees it.
 
-- **[FlakyRadar](https://github.com/nhan4013/flakyradar)** — a self-hosted
-  platform with real flip-detection (the same commit passing *and* failing —
-  actual proof of non-determinism, scored with a Wilson interval), AI
-  root-cause clustering, a sandboxed diagnostic agent, and a multi-tenant
-  dashboard.
-- **[ai-flake-sleuth](https://github.com/deghosal-2026/ai-flake-sleuth)** — a
-  PyPI package with 15 log parsers across 12 frameworks and 5 languages,
-  cross-run correlation, and LLM response caching.
+## Prior art
 
-If you need an actual flaky-test *detection and tracking* system, start
-there — they have real run-history evidence, which this project does not.
-flaky-finder's only reason to exist alongside them is narrower: a minimal
-reference implementation of **separating "what the log shows" from "what a
-human might infer from it,"** small enough to read start to finish in one
-sitting. If that discipline is useful to you as a standalone building block
-— or you want to see exactly where that line gets drawn — this is for you.
-If you need the full platform, use the projects above.
+This is a crowded space, and it is worth knowing about the alternatives
+before you adopt this project. Two existing projects do a lot more:
 
-## Usage
+- **[FlakyRadar](https://github.com/nhan4013/flakyradar)** is a self hosted
+  platform with real flip detection (the same commit both passing *and*
+  failing, which is actual proof of non determinism, scored with a Wilson
+  interval), AI root cause clustering, a sandboxed diagnostic agent, and a
+  dashboard for multiple teams.
+- **[ai-flake-sleuth](https://github.com/deghosal-2026/ai-flake-sleuth)** is
+  a PyPI package with 15 log parsers covering 12 frameworks and 5 languages,
+  correlation across runs, and caching of LLM responses.
 
-Requires **Node.js 22.5 or newer** (see [Node.js version](#nodejs-version)).
+If you need a full system for *detecting and tracking* flaky tests, start
+with those. They have real run history evidence, and this project's history
+support is much simpler. flaky-finder has a narrower reason to exist next to
+them: it is a minimal reference for **keeping "what the log shows" separate
+from "what a person might conclude from it"**, small enough to read from
+start to finish in one sitting. If that discipline is useful to you as a
+building block, or you want to see exactly where that line is drawn, this
+project is for you. If you need the full platform, use one of the projects
+above.
+
+## Getting started
+
+### Requirements
+
+You need **Node.js 22.5 or newer**. Node.js 18 and 20 have both reached end
+of life ([Node.js releases](https://nodejs.org/en/about/previous-releases)),
+so supporting them is not a goal.
+
+The only feature that truly needs 22.5 is history tracking, which uses the
+built in `node:sqlite` module
+([added in v22.5.0](https://nodejs.org/api/sqlite.html)). That module is
+loaded only when you run a `history` command. On a Node.js version without
+it, the command stops with a clear message instead of a stack trace, and
+`analyze` does not depend on it at all.
+
+### Analyze a log
 
 ```bash
 npm install
@@ -128,33 +170,47 @@ Summary: {
 }
 ```
 
-Also bundled: `fixtures/jest-sample.log`, `fixtures/playwright-sample.log`, and
-`fixtures/github-actions-pytest.log` (the pytest sample as GitHub Actions
-serves it: timestamps, ANSI colors, CRLF line endings).
+The project also ships with `fixtures/jest-sample.log`,
+`fixtures/playwright-sample.log`, and `fixtures/github-actions-pytest.log`.
+The last one is the pytest sample exactly as GitHub Actions serves it, with
+timestamps, ANSI colors and Windows style line endings.
 
-`flaky-finder <file>` (without `analyze`) still works. Run
-`flaky-finder --help` for every command, and `flaky-finder --version` for
-the version. Unknown or misspelled flags are an error (exit code 2), never
-silently ignored.
+Running `flaky-finder <file>` without the word `analyze` still works. Run
+`flaky-finder --help` to see every command, and `flaky-finder --version` to
+see the version. An unknown or misspelled flag is treated as an error (exit
+code 2) and is never silently ignored.
 
-### Raw CI logs: colors and timestamps are stripped first
+### Run the test suite
 
-GitHub Actions and GitLab force colored output, and logs downloaded from
-GitHub Actions prefix every line with a timestamp. Before parsing,
-flaky-finder removes ANSI escape codes, GitHub Actions-style
-`2026-11-03T05:27:43.1234567Z ` line prefixes, and `\r\n` line endings
-(`src/log-cleaning.ts`), so you can feed it a log exactly as CI produced it.
-JUnit failure text gets the same ANSI stripping. Other CI-specific prefixes
-(for example GitLab section markers) are not handled yet.
+```bash
+npm test           # run all tests
+npm run coverage   # run tests with a c8 coverage report (HTML in coverage/)
+npm run lint       # ESLint
+npm run format     # Prettier
+```
 
-### Machine-readable output (`--json`)
+## Features
+
+### Raw CI logs work as they are
+
+GitHub Actions and GitLab turn on colored output by default, and logs you
+download from GitHub Actions start every line with a timestamp. Before
+parsing, flaky-finder removes ANSI escape codes, GitHub Actions timestamps
+such as `2026-11-03T05:27:43.1234567Z`, and `\r\n` line endings (see
+`src/log-cleaning.ts`). That means you can give it a log exactly as your CI
+produced it. Failure text inside JUnit reports gets the same color cleanup.
+Other CI specific prefixes, such as GitLab section markers, are not handled
+yet.
+
+### Machine readable output (`--json`)
 
 ```bash
 npm run cli -- analyze fixtures/pytest-sample.log --json
 ```
 
-Prints exactly one JSON object to stdout, for scripts and CI steps (for
-example a PR-comment action) to consume instead of scraping the text output:
+This prints exactly one JSON object to stdout. Scripts and CI steps (for
+example, an action that comments on a pull request) can read it directly
+instead of picking apart the text output.
 
 ```json
 {
@@ -182,23 +238,28 @@ example a PR-comment action) to consume instead of scraping the text output:
 }
 ```
 
-`summary` always contains all three verdicts (zero-filled). `confidence`
-means the same as in the text output: a match strength for rules, the
-model's own confidence for the LLM step. `history ingest`, `show`, and
-`report` also accept `--json`. `schemaVersion` changes only if a field is
-removed or changes meaning; new fields can be added without a bump, so
-ignore fields you don't recognize. The exit code is 0 whatever the verdicts
-are: this output is advisory, and gating on it is your decision.
+A few things worth knowing:
 
-**Full contract:** every field of every `--json` output, when it's present,
-and the compatibility and exit-code rules are in
-[docs/json-output.md](docs/json-output.md). Tests in `tests/cli.test.ts`
+- `summary` always lists all three verdicts, with zero for any that did not
+  occur.
+- `confidence` means the same thing as in the text output: a match strength
+  for rules, and the model's own confidence for the LLM step.
+- `history ingest`, `history show` and `history report` accept `--json` too.
+- `schemaVersion` only changes when a field is removed or changes meaning.
+  New fields can be added without changing it, so simply ignore any field
+  you do not recognize.
+- The exit code is 0 no matter what the verdicts are. This output is
+  advisory, and whether to block anything based on it is your call.
+
+**Full contract:** every field in every `--json` output, when each one is
+present, and the rules for compatibility and exit codes are described in
+[docs/json-output.md](docs/json-output.md). The tests in `tests/cli.test.ts`
 fail if a field name changes by accident.
 
 ### Custom rules (`FLAKY_FINDER_RULES_FILE`)
 
-Add your own team's failure signatures, such as a known-unreliable internal
-host, without forking `src/rules.ts`:
+You can add your own team's failure signatures, such as an internal host
+that is known to be unreliable, without forking `src/rules.ts`:
 
 ```json
 {
@@ -220,82 +281,90 @@ host, without forking `src/rules.ts`:
 FLAKY_FINDER_RULES_FILE=team-rules.json npm run cli -- analyze ci.log
 ```
 
-- **Fields:** `id` (lowercase kebab-case, unique, and not the same as a
-  built-in rule id), `category`, `verdict`, `matchStrength`
-  (`exact`/`strong`/`weak`) and `pattern` (a JavaScript regex as a string)
-  are required. `flags` is optional (default `"i"`; only `i`, `m`, `s` and
-  `u` are allowed, because `g` and `y` make a regex stateful). `explanation`
-  is optional; `{line}` in it is replaced with the matched evidence line.
-- **Verdicts:** only `ENVIRONMENT_SIGNAL_DETECTED` or `UNVERIFIED`, the same
-  as the built-in rules. No rule can claim `SUSPECTED_REGRESSION` from text
-  matching alone.
-- **Precedence:** custom rules are checked **before** the built-ins, in file
-  order, and the first match decides the verdict, because a team's own
-  signature is usually more specific than a generic one. A built-in rule
-  that also matched is still listed in `alsoMatched` (see
+How custom rules behave:
+
+- **Fields.** These are required: `id` (lowercase words joined by dashes,
+  unique, and different from every built in rule ID), `category`, `verdict`,
+  `matchStrength` (`exact`, `strong` or `weak`), and `pattern` (a JavaScript
+  regular expression written as a string). `flags` is optional and defaults
+  to `"i"`. Only `i`, `m`, `s` and `u` are allowed, because `g` and `y` make
+  a regular expression remember state between matches. `explanation` is
+  optional, and any `{line}` inside it is replaced with the matched evidence
+  line.
+- **Verdicts.** A custom rule can only produce `ENVIRONMENT_SIGNAL_DETECTED`
+  or `UNVERIFIED`, just like the built in rules. No rule can claim
+  `SUSPECTED_REGRESSION` from matching text alone.
+- **Order.** Custom rules are checked **before** the built in ones, in the
+  order they appear in your file, and the first match decides the verdict.
+  A team's own signature is usually more specific than a general one. Any
+  built in rule that also matched is still listed in `alsoMatched` (see
   [How rules are evaluated](#how-rules-are-evaluated)).
-- **Multi-line patterns:** with the `s` flag a pattern can match across
-  lines. The evidence is then exactly the text it matched (which can
-  contain line breaks), never surrounding log text.
-- **Same contract as built-ins:** every custom match still cites its
-  evidence line and gets the same "not a confirmed diagnosis" caveat. Output
-  marks it as custom (`via custom rule <id>`, or `"ruleOrigin": "custom"` in
-  JSON).
-- **Fails loudly:** a missing file, invalid JSON, a missing field, a bad
-  regex or a disallowed verdict exits with code 1 and names the file and
-  rule index. A bad file never means "zero rules".
-- Rules are data, not code: loading a rules file never executes anything.
-  A regex can still be slow on a large log if it's written badly
-  (catastrophic backtracking), so keep custom patterns simple.
-- **Known gap:** `history ingest` does **not** use custom rules yet. History
-  stores the built-in `RULESET_VERSION` with every piece of failure evidence,
-  and that number says nothing about a team's custom rules. Supporting them
-  needs a schema change to record which custom ruleset was used, so it's
-  deliberately left out for now, not forgotten.
+- **Patterns across several lines.** With the `s` flag, a pattern can match
+  text that spans more than one line. In that case the evidence is exactly
+  the text that matched (line breaks included), never the surrounding log.
+- **Same standards as built in rules.** Every custom match still quotes its
+  evidence line and gets the same "not a confirmed diagnosis" note. The
+  output marks it clearly as custom: `via custom rule <id>` in text, and
+  `"ruleOrigin": "custom"` in JSON.
+- **Problems are reported loudly.** A missing file, invalid JSON, a missing
+  field, a broken regular expression or a verdict that is not allowed all
+  stop the run with exit code 1, naming the file and the position of the
+  rule. A broken file never quietly turns into "no rules".
+- **Rules are data, not code.** Loading a rules file never runs anything.
+  A badly written regular expression can still be slow on a large log
+  (this is called catastrophic backtracking), so keep your patterns simple.
+- **Known gap.** `history ingest` does **not** use custom rules yet. History
+  saves the built in `RULESET_VERSION` with each piece of failure evidence,
+  and that number says nothing about your own rules. Supporting them needs
+  a database schema change to record which custom rules were used, so this
+  has been left out on purpose for now. It has not been forgotten.
 
 ### How rules are evaluated
 
-1. **Every rule is checked** against each failure, custom rules first (in
-   file order), then the built-ins (in `src/rules.ts` order).
-2. **The first matching rule decides the verdict.** Built-ins are ordered
-   most specific first: an exact error code like `ECONNRESET` before a
-   loose phrase like `Target closed`. There is no scoring: precedence is
-   only list order, so the result is predictable and easy to audit.
-3. **Nothing that matched is hidden.** Every other matching rule is listed
-   with its own evidence line, as `also matched (did not decide the
-   verdict)` in the text output and `alsoMatched` in JSON.
-4. **A co-occurring assertion is surfaced too.** If the winning rule found
-   an environment signature but the log also has an assertion mismatch
-   (`AssertionError`, `expect(...).toBe`, ...), the explanation quotes it
-   and says the signature doesn't rule it out.
+1. **Every rule is checked** against each failure. Custom rules come first,
+   in file order, followed by the built in rules in the order they appear in
+   `src/rules.ts`.
+2. **The first rule that matches decides the verdict.** Built in rules are
+   ordered from most specific to least specific, so an exact error code like
+   `ECONNRESET` comes before a loose phrase like `Target closed`. There is no
+   scoring. The order of the list is the only thing that decides, which keeps
+   results predictable and easy to audit.
+3. **Nothing that matched is hidden.** Every other rule that matched is
+   listed with its own evidence line. In the text output it appears as
+   `also matched (did not decide the verdict)`, and in JSON as `alsoMatched`.
+4. **An assertion failure in the same log is shown as well.** If the deciding
+   rule found an environment signature but the log also contains an
+   assertion mismatch (such as `AssertionError` or `expect(...).toBe`), the
+   explanation quotes it and points out that the signature does not rule it
+   out.
 
-Example: a log with both a connection reset and a timeout is reported as
-`network-reset` (it comes first), with `timeout-exceeded` and its line
-under `alsoMatched`. Neither one establishes the cause: they are two
-observations to check. `tests/rules.test.ts` and
-`tests/custom-rules.test.ts` cover these cases.
+For example, a log that contains both a connection reset and a timeout is
+reported as `network-reset` because that rule comes first, and
+`timeout-exceeded` appears under `alsoMatched` with its own line. Neither one
+proves the cause. They are two observations worth checking. The tests in
+`tests/rules.test.ts` and `tests/custom-rules.test.ts` cover these cases.
 
-History ingestion records only the deciding rule per failure for now, not
-`alsoMatched`.
+For now, history ingestion records only the deciding rule for each failure,
+not the `alsoMatched` list.
 
 ### Failure signature groups
 
-A single CI run can produce many failures that all matched the same rule —
-a shared database outage showing up as 24 separate `db-contention` results,
-say. Investigating 24 separate failures one at a time when they share a
-signature is wasted effort, so `analyze` also reports a read-only summary
-grouping its own results by which rule decided them.
+A single CI run can produce many failures that all matched the same rule.
+Imagine one database outage showing up as 24 separate `db-contention`
+results. Looking at 24 failures one by one when they share a signature is
+wasted effort, so `analyze` also prints a read only summary that groups its
+results by the rule that decided them.
 
-**What this does and does not establish.** A group means "these failures
-matched the same rule" — that is a fact already sitting in the per-failure
-results above it; grouping doesn't add a new classification or inference on
-top. It does **not** mean "these failures share one real-world cause":
-independent, unrelated failures can trivially produce the identical
-signature (two separate network blips on the same day), and a single real
-incident can just as easily produce several different signatures (a DB
-outage causing one test to time out and another to see a connection
-reset). Every group states this explicitly, not just the ones that look
-surprising — the same discipline as `ENVIRONMENT_SIGNAL_DETECTED` itself.
+**What a group does and does not tell you.** A group means "these failures
+matched the same rule". That fact is already visible in the individual
+results above it, so grouping adds no new classification or guesswork. It
+does **not** mean "these failures share one real cause". Unrelated failures
+can easily produce the same signature (two separate network blips on the
+same day, for instance), and one real incident can just as easily produce
+several different signatures (a database outage that makes one test time out
+and another see a connection reset). Every group says this explicitly, not
+only the ones that look surprising. It is the same care that
+`ENVIRONMENT_SIGNAL_DETECTED` itself takes.
 
 ```
 Failure signature groups (same rule matched more than once — see limitation below):
@@ -307,282 +376,68 @@ Failure signature groups (same rule matched more than once — see limitation be
   classification signature, not a confirmed shared root cause. ...
 ```
 
-**Rules:**
+How grouping works:
 
-- **Grouped by `ruleId` + `ruleOrigin`.** A custom rule can never share an
-  id with a built-in (`custom-rules.ts` rejects that when the rules file is
-  loaded), but grouping keys on both anyway rather than relying on that
-  upstream check to stay correct.
-- **Counts failure *observations*, not tests.** `occurrenceCount` is how
-  many failures matched; `affectedTestCount`/`affectedTestIds` is how many
-  *distinct* tests that covers — they differ when the same test produced
-  more than one observation, e.g. a retry-plugin duplicate (see the JUnit
-  parser's documented handling of that case).
-- **`matchStrength: "weak"` rules are excluded by default**, not because a
-  weak match is wrong, but because grouping on a loose, generic signature
-  — or, for a custom rule, a **self-declared** "weak" that nothing here
-  independently verifies — is the easiest way for this feature to
-  manufacture the appearance of a pattern that isn't really there. Pass
-  `--include-weak-groups` to see them too; nothing is ever removed from the
-  ungrouped results either way.
-- **A rule that matched only once is not a group.** It's already visible in
-  the normal per-failure output.
-- **Grouping never changes a result.** `observations` holds the exact same
-  objects that appear in the top-level results; verdicts, evidence and
-  explanations are untouched.
+- **Groups are keyed on `ruleId` and `ruleOrigin` together.** A custom rule
+  can never use the same ID as a built in rule (`custom-rules.ts` rejects
+  that when it loads the file), but grouping uses both values anyway instead
+  of relying on that earlier check to stay correct.
+- **It counts failures, not tests.** `occurrenceCount` is how many failures
+  matched. `affectedTestCount` and `affectedTestIds` tell you how many
+  *different* tests those failures came from. The two numbers differ when
+  the same test failed more than once, for example when a retry plugin adds
+  a duplicate entry (see how the JUnit parser handles that case).
+- **Rules with `matchStrength: "weak"` are left out by default.** A weak
+  match is not wrong, but grouping on a loose, general signature is the
+  easiest way for this feature to suggest a pattern that is not really
+  there. The same goes for a custom rule that calls itself "weak", since
+  nothing here checks that label independently. Pass
+  `--include-weak-groups` to include them. The individual results are never
+  affected either way.
+- **A rule that matched only once does not form a group.** It is already
+  visible in the normal output for each failure.
+- **Grouping never changes a result.** `observations` holds exactly the same
+  objects as the main results. Verdicts, evidence and explanations stay
+  untouched.
 - **The text output shows up to 3 evidence lines per group**, plus a count
-  of how many more there are — `--json`'s `observations` array always has
-  all of them.
+  of how many more there are. The `observations` array in `--json` output
+  always includes all of them.
 
-**Deliberately not implemented, and not planned without more evidence
-first:** normalizing/fuzzing evidence text to group near-duplicate (not
-identical) errors, and any similarity- or LLM-based clustering across
-*different* rules. Both require judgment calls this project isn't willing
-to make without a labeled dataset to validate against — see the Roadmap.
-This feature is a grouping of existing, already-trusted classifications; it
-is explicitly not a root-cause or incident-correlation engine.
+**Left out on purpose, with no plans to add without more evidence first:**
+smoothing out evidence text so that similar (but not identical) errors are
+grouped together, and any clustering across *different* rules based on
+similarity or an LLM. Both need judgment calls that this project will not
+make without a labeled dataset to check them against (see the
+[Roadmap](#roadmap)). This feature groups results that are already trusted.
+It is deliberately not a tool for finding root causes or linking incidents.
 
-### Node.js version
-
-flaky-finder declares `node >= 22.5.0`. Node.js 18 and 20 are both
-end-of-life ([Node.js releases](https://nodejs.org/en/about/previous-releases)),
-so supporting them isn't a goal. The one feature that really needs 22.5 is
-history tracking, which uses the built-in `node:sqlite` module
-([added in v22.5.0](https://nodejs.org/api/sqlite.html)). That module is
-loaded only when a `history` command runs, so on a Node.js without it, the
-command exits with a clear message instead of a stack trace, and `analyze`
-doesn't depend on it at all.
-
-### Optional: enable the LLM fallback
+### Optional LLM fallback
 
 ```bash
-# e.g. a free Groq API key (serves open-weight models — default here is OpenAI's GPT-OSS 20B)
+# For example, a free Groq API key (Groq serves open weight models; the default here is OpenAI's GPT-OSS 20B)
 FLAKY_FINDER_API_KEY=gsk_your_key_here npm run cli -- fixtures/pytest-sample.log
 ```
 
-Without a key, flaky-finder stays in rules-only mode and reports `UNVERIFIED`
-for anything it can't place, rather than silently falling back to a
-dependency it doesn't have.
-
-### Run the test suite
-
-```bash
-npm test           # run all tests
-npm run coverage   # run tests with a c8 coverage report (HTML in coverage/)
-npm run lint       # ESLint
-npm run format     # Prettier
-```
-
-## Limitations — what this tool does NOT establish
-
-Stated plainly, because the whole point of this project is not overclaiming:
-
-- **A matched signature is not proof of flakiness.** A timeout caused by a
-  slow CI runner and a timeout caused by a genuine regression that never
-  renders the awaited element produce the *exact same error text*. The rule
-  engine reports the signature either way and says so explicitly — it does
-  not and cannot resolve which one happened.
-- **Every verdict above still comes from a single log.** Historical
-  tracking (see that section below) adds a separate, evidence-based
-  assessment across multiple ingested runs — but it requires you to ingest
-  JUnit XML reports over time; without that, there is still no run history,
-  and FlakyRadar's flip-detection remains the more complete version of this
-  idea.
-- **Multi-framework support is best-effort.** The parser extracts a test
-  name and failure body; it does not yet distinguish a first failure from a
-  retry-that-passed, a skip-after-setup-failure, or a failure caused by a
-  different test. Treat each framework's parser as "handles the common
-  case," not an exhaustive model of that tool's output.
-- **The test suite checks the rules behave as written, not that they're
-  right.** A passing suite means the regexes match what they were built
-  to match, including the adversarial case where a matching signature masks
-  a real regression, a documented precedence rule for overlapping matches
-  (and that a co-occurring, lower-precedence observation is surfaced rather
-  than silently dropped), basic robustness (empty input, truncated input,
-  determinism), and the LLM step's own constraint-enforcement logic
-  (`tests/llm.test.ts` — a model can't push `SUSPECTED_REGRESSION` past low
-  confidence, an unrecognized verdict string can't pass through, malformed
-  output throws instead of fabricating a result). It is not a validated
-  accuracy benchmark against labeled real-world failures — there isn't one
-  yet.
-- **A regex can match in a misleading context.** Every rule matches on
-  literal text — if a log happens to contain one of these strings outside
-  its usual meaning (a comment, a quoted example, unrelated log noise), the
-  rule still fires. This is an inherent risk of text-pattern matching, not
-  something this version tries to disambiguate away; it's the same reason
-  every match is required to cite its exact evidence line, so a human can
-  immediately see if that happened.
-- **Not every open-weight model is a drop-in LLM fallback.** Verified while
-  building this: a reasoning/"thinking" model (Qwen3) combined with forced
-  JSON output (`response_format: json_object`) through Ollama never
-  returned within a 2-minute window, uncapped even by `max_tokens` — a real
-  conflict between grammar-constrained decoding and a model's internal
-  `<think>` phase, not something fixable client-side. A plain instruct
-  model (Llama 3.2/3.1) hits none of this and returns in seconds. If you're
-  running fully local, prefer a non-reasoning model for this specific
-  endpoint shape.
+Without a key, flaky-finder stays in rules only mode. Anything it cannot
+place is reported as `UNVERIFIED`, rather than quietly depending on a
+service it does not have. Before you turn this on, read what it sends in
+[Data handling and privacy](#data-handling-and-privacy).
 
 ## Historical tracking
 
-Everything above comes from a *single* log and can never establish actual
-intermittency — the strongest real evidence for flakiness is the same test
-passing and failing on the same commit, which needs run history. Historical
-tracking adds that, as a **separate axis from the log-level verdict, never a
-replacement for it**. A test can have an `ENVIRONMENT_SIGNAL_DETECTED`
-verdict on one run AND an `INTERMITTENCY_OBSERVED` historical assessment —
-the verdict describes what that one log shows; the assessment describes
-what the recorded run history shows. Never conflate them: `UNVERIFIED` isn't
-"passed," and a signal isn't "flaky," no matter how much history piles up.
+Everything above is based on a *single* log, and a single log can never
+prove that a test is truly intermittent. The strongest real evidence of
+flakiness is the same test passing and failing on the same commit, and that
+needs a history of runs. Historical tracking adds exactly that, as a
+**separate view next to the log verdict, never a replacement for it**.
 
-### Why JUnit XML, not the failure logs above
+A test can have an `ENVIRONMENT_SIGNAL_DETECTED` verdict on one run *and* an
+`INTERMITTENCY_OBSERVED` history assessment. The verdict describes what that
+one log shows, and the assessment describes what the recorded runs show.
+Please never mix the two up: `UNVERIFIED` does not mean "passed", and a
+signal does not mean "flaky", however much history builds up.
 
-A failure log only ever tells you about failures — it cannot tell you a
-test *passed*, so it cannot show a fail→pass pattern. pytest, Jest, and
-Playwright can all emit [JUnit-style XML](https://junit.org/junit5/) test
-reports (`--junitxml`, `--reporters=jest-junit`, `--reporter=junit`), which
-record every test's outcome — passed, failed, or skipped — not just the
-failures. That's the first and only ingestion format for history right now.
-The existing log parsers are unaffected and still do their own job: a
-failed test case's `<failure>` text is run through the same rule engine
-(`classifyWithRules`) used for single-log analysis, so failure evidence in
-history carries the same signature, rule id, and caveats as the CLI's
-normal output — just attached to a specific recorded run instead of printed
-once and discarded.
-
-### Storage
-
-Local SQLite, via Node's built-in `node:sqlite` (still marked experimental
-on Node 22 — you'll see an `ExperimentalWarning` on stderr; that's expected
-and harmless; newer Node.js versions mark it as a release candidate, see the
-[Node.js docs](https://nodejs.org/api/sqlite.html)) — no new dependency, no server, no account, consistent with this
-project staying local-first. Default location: `.flaky-finder/history.db`
-(gitignored; override with `--db <path>` on every history command). Two
-logical tables, kept deliberately separate:
-
-- **`test_runs`** — one row per test case per ingested report: test
-  identity, framework, outcome (`PASSED`/`FAILED`/`SKIPPED`/`UNKNOWN`), the
-  run id, commit SHA, and optional environment id.
-- **`failure_evidence`** — for `FAILED` rows only: the rule-engine verdict,
-  rule id, matched evidence line, and the ruleset version that produced
-  them (see `RULESET_VERSION` in `src/rules.ts`). Kept in its own table so
-  that changing a rule later can never be mistaken for a change in actually
-  observed test behavior — the two are tracked independently on purpose.
-
-Duplicate detection is scoped to **`(run_id, report content hash)`, not
-content hash alone.** Re-ingesting the exact same file under the exact same
-`--run-id` is treated as a safe-to-retry duplicate and skipped. Two
-genuinely separate runs that happen to produce byte-identical content (e.g.
-two consecutive all-pass runs on the same commit) are **not** discarded as
-duplicates of each other as long as they're given different `--run-id`
-values — an earlier version of this scoped the uniqueness to content hash
-alone, which would have silently dropped the second of two legitimate runs;
-this was caught in review and fixed before it shipped. If you don't pass
-`--run-id`, the CLI defaults to a timestamp, so every ingestion without an
-explicit id is treated as new — pass a stable id (e.g. your CI run id) if
-you want retry-safe deduplication.
-
-Foreign keys (`test_runs.ingestion_id`, `failure_evidence.test_run_id`) are
-enforced via `PRAGMA foreign_keys = ON`, set explicitly on every connection
-— SQLite does not enforce declared foreign keys by default, so this has to
-be turned on rather than assumed from the schema alone.
-
-One report's worth of writes (the ingestion row, every `test_runs` row,
-every `failure_evidence` row) is wrapped in a single explicit
-`BEGIN`/`COMMIT`-or-`ROLLBACK` transaction — `node:sqlite`'s `DatabaseSync`
-has no built-in `transaction()` helper, unlike some other SQLite drivers, so
-this is done by hand in `history-ingest.ts`. A failure partway through
-(a future bug, an unexpected constraint violation) rolls back everything
-from that ingestion, including rows that had already been written
-successfully earlier in the same call — it never leaves a half-recorded
-report in the database.
-
-Every database is stamped with a schema version (`PRAGMA user_version`),
-checked on open. `openHistoryDb` refuses to open a database stamped with a
-version it doesn't recognize rather than silently reading or writing it as
-if the schema matched — the hook a real migration will need whenever the
-schema actually changes. There is exactly one schema version so far, and no
-migration logic yet, because nothing has needed one yet: this is the first
-schema this project has ever shipped, so there's no earlier real database
-anywhere to migrate from.
-
-### The four historical assessments — what each one does and doesn't mean
-
-These describe **recorded run history**, never a single log, and are
-*in addition to*, not instead of, the verdicts in the section above.
-
-- **`INTERMITTENCY_OBSERVED`** — the same test both passed and failed **on
-  the same commit SHA** across recorded runs. This is real evidence of
-  intermittent outcomes under comparable code. It does **not** establish a
-  root cause, and does **not** rule out environment or infrastructure
-  differences between those specific runs — two runs on the same commit can
-  still differ in runner load, network conditions, or test order.
-- **`FAILURE_REPEATED`** — every recorded run of this test failed. This is
-  consistency across the runs that happened to get recorded, not proof of a
-  product defect — nothing here rules out an environment problem that's
-  simply present on every run seen so far (e.g. a CI runner that's
-  consistently resource-starved).
-- **`PASS_ONLY`** — every recorded run passed. This does not prove the test
-  can never fail; it means no failure has been recorded in the history
-  collected so far. A test with one day of `PASS_ONLY` history and a test
-  with one year of it are reported identically — the assessment carries no
-  notion of "how much" history, only "what kind."
-- **`INSUFFICIENT_HISTORY`** — the most conservative label, and the
-  default when nothing stronger is justified. It covers three distinct
-  situations, deliberately not split into separate categories: (1) fewer
-  than two non-skipped runs are recorded at all; (2) outcomes are mixed
-  (some passed, some failed) but **never on the same commit** — e.g. a test
-  failed on commit A and passed on commit B, which is exactly what a
-  genuine fix looks like, not flakiness; (3) the commit SHA wasn't recorded
-  for the runs being compared, so "same code" was never actually
-  established — two runs with no commit recorded are never treated as "the
-  same commit" just because neither has one.
-
-### Known limitations of test identity
-
-A test's history is tracked under `<framework>::<classname>::<name>`, built
-from whatever JUnit XML gives you — there is no more reliable identifier
-available from that format. Two consequences worth knowing before you rely
-on this:
-
-- **Reports that omit `classname`** (some minimal JUnit writers do) will
-  merge any two tests that share a bare `name`, even if they're in
-  completely unrelated files. This is tested and documented behavior
-  (`tests/history.test.ts`'s "ambiguous test identities" cases), not a bug
-  waiting to be fixed — it's an inherent limit of identifying a test from
-  JUnit XML alone, the same way `parser.ts`'s log parsers only handle the
-  common case for their formats.
-- **`history show <name>`** matches by substring against both the test
-  name and the full test id. If more than one distinct tracked test matches
-  your query (e.g. the same test name under two different classnames), it
-  lists all of them rather than silently guessing which one you meant —
-  pass the full test id shown in that output to pin down one.
-
-### Known limitations of the JUnit XML parser
-
-It's a small regex-based extractor (`src/junit-parser.ts`), not a general
-XML parser — same tradeoff as the log parsers in `parser.ts`. Specifically:
-
-- **No XML namespace support.** A report using `<ns:testsuite>`/
-  `<ns:testcase>` matches none of this parser's patterns and is treated as
-  "not a recognized JUnit report" (`JUnitParseError`) — a loud, defined
-  failure, not silently zero tests found.
-- **A `<testcase>` with both `<failure>` and `<error>` elements** (unusual,
-  but not invalid) uses only the first one in document order as evidence;
-  a warning is recorded, the second is not silently merged or dropped from
-  the warning list.
-- **Duplicate `<testcase>` entries within one report** (e.g. emitted by a
-  rerun/retry plugin) are not deduplicated — each occurrence becomes its
-  own recorded run under the same `run_id`. If their outcomes differ, that
-  can itself produce `INTERMITTENCY_OBSERVED` from a single CI job's
-  internal retries, not from two independent executions — worth knowing if
-  your test runner retries failing tests automatically before writing the
-  report.
-- **A truncated or malformed `<testcase>` block** (an opening tag with no
-  matching close before the file ends) is excluded and flagged with a
-  warning rather than silently miscounted — but this is a heuristic tag
-  count, not real well-formedness validation.
-
-### CLI
+### Commands
 
 ```bash
 # Record outcomes from a JUnit XML report (bundled sample: fixtures/junit-sample.xml)
@@ -595,54 +450,212 @@ flaky-finder history show test_fetch_user_retries
 flaky-finder history report
 ```
 
-Flags on `ingest`: `--commit <sha>`, `--run-id <id>`, `--environment <id>`,
-`--framework <pytest|jest|playwright|generic>` (JUnit XML doesn't self-
-identify the framework; defaults to `generic`), `--db <path>`. `show` and
-`report` both accept `--db <path>`; `report` also accepts
-`--framework <name>` to filter. All three accept `--json` (see
-[Machine-readable output](#machine-readable-output---json)). Every command explains what to do next when
-no history exists yet, rather than printing an empty table.
+Options for `ingest`:
 
-### What's explicitly NOT in scope, even now
+- `--commit <sha>`, `--run-id <id>` and `--environment <id>` describe the run.
+- `--framework <pytest|jest|playwright|generic>` sets the framework, because
+  JUnit XML does not say which tool produced it. The default is `generic`.
+- `--db <path>` chooses the database file.
 
-**No automatic retries and no merge gating.** History ingestion and
-analysis are read-only with respect to your CI pipeline — this tool records
-and reports, it does not re-run tests or block a PR based on what it finds.
-Acting on a historical assessment (retrying a run, gating a merge, auto-
-dismissing a failure) is a policy decision for whoever integrates this, and
-it stays a deliberate choice a team opts into, never a default this project
-ships with.
+`show` and `report` both accept `--db <path>`, and `report` also accepts
+`--framework <name>` to filter the list. All three commands accept `--json`
+(see [Machine readable output](#machine-readable-output---json)). When no
+history exists yet, every command tells you what to do next instead of
+printing an empty table.
 
-Also still out of scope: a hosted/shared database (local SQLite only — see
-"Keeping history across CI runs" below), and any ingestion format other
-than JUnit XML.
+### Why JUnit XML instead of the failure logs above
+
+A failure log only ever talks about failures. It cannot tell you that a test
+*passed*, so it can never show a test going from failing to passing. pytest,
+Jest and Playwright can all write [JUnit style XML](https://junit.org/junit5/)
+reports (`--junitxml`, `--reporters=jest-junit`, `--reporter=junit`), which
+record the outcome of every test: passed, failed or skipped. That is the
+first and only input format for history right now.
+
+The log parsers are not affected and keep doing their own job. When a test
+case in a JUnit report has failed, its `<failure>` text goes through the same
+rule engine (`classifyWithRules`) used for single logs. So the failure
+evidence stored in history has the same signature, rule ID and notes as the
+normal CLI output. It is simply attached to a specific recorded run instead
+of being printed once and forgotten.
+
+### Storage
+
+History lives in a local SQLite file, using Node's built in `node:sqlite`
+module. That means no extra dependency, no server and no account, which fits
+this project's local first approach. On Node 22 the module is still marked
+experimental, so you will see an `ExperimentalWarning` on stderr. That is
+expected and harmless. Newer Node.js versions mark it as a release candidate
+(see the [Node.js docs](https://nodejs.org/api/sqlite.html)).
+
+The default location is `.flaky-finder/history.db`. It is ignored by git,
+and you can choose a different file with `--db <path>` on any history
+command. The data is split into two tables that are deliberately kept apart:
+
+- **`test_runs`** has one row for each test case in each ingested report:
+  the test's identity, framework, outcome (`PASSED`, `FAILED`, `SKIPPED` or
+  `UNKNOWN`), the run ID, the commit SHA, and an optional environment ID.
+- **`failure_evidence`** is only filled in for `FAILED` rows. It holds the
+  rule engine's verdict, the rule ID, the matched evidence line, and the
+  version of the rule set that produced them (see `RULESET_VERSION` in
+  `src/rules.ts`). It has its own table so that a later change to a rule can
+  never be mistaken for a change in how the test actually behaved. The two
+  are tracked separately on purpose.
+
+**Duplicate reports.** Duplicates are detected using **the run ID and the
+report's content hash together**, not the content hash alone. Ingesting the
+exact same file under the exact same `--run-id` again is treated as a safe
+retry and skipped. Two genuinely separate runs that happen to produce
+identical files (for example, two passing runs in a row on the same commit)
+are **not** treated as duplicates, as long as they have different `--run-id`
+values. An earlier version used the content hash alone, which would have
+silently dropped the second of two real runs. That was caught in review and
+fixed before release. If you leave out `--run-id`, the CLI uses a timestamp,
+so every ingestion counts as new. Pass a stable ID (such as your CI run ID)
+if you want retries to be detected safely.
+
+**Foreign keys.** The links between tables (`test_runs.ingestion_id` and
+`failure_evidence.test_run_id`) are enforced with `PRAGMA foreign_keys = ON`,
+which is set on every connection. SQLite does not enforce foreign keys by
+default, so this has to be switched on explicitly.
+
+**All or nothing writes.** Everything written for one report (the ingestion
+row, every `test_runs` row and every `failure_evidence` row) happens inside a
+single `BEGIN` and `COMMIT` (or `ROLLBACK`) transaction. The `DatabaseSync`
+class in `node:sqlite` has no built in `transaction()` helper, unlike some
+other SQLite drivers, so `history-ingest.ts` does this by hand. If something
+fails halfway through (a future bug, or an unexpected constraint violation),
+everything from that ingestion is rolled back, including rows that were
+already written. You never end up with a half recorded report.
+
+**Schema version.** Every database is stamped with a schema version
+(`PRAGMA user_version`) that is checked when it is opened. `openHistoryDb`
+refuses to open a database with a version it does not recognize, instead of
+reading or writing it as if the schema matched. This is the hook that a real
+migration will need once the schema changes. So far there is exactly one
+schema version and no migration code, because nothing has needed one yet.
+This is the first schema the project has shipped, so there is no older
+database anywhere to migrate from.
+
+### The four history assessments
+
+These describe the **recorded run history**, never a single log, and they
+come *in addition to* the verdicts above, not instead of them.
+
+- **`INTERMITTENCY_OBSERVED`**: the same test both passed and failed **on the
+  same commit SHA** across recorded runs. This is real evidence of
+  inconsistent results on the same code. It does **not** tell you the root
+  cause, and it does **not** rule out differences in environment or
+  infrastructure between those runs. Two runs on the same commit can still
+  differ in runner load, network conditions or test order.
+- **`FAILURE_REPEATED`**: every recorded run of this test failed. That shows
+  consistency across the runs that happened to be recorded. It is not proof
+  of a product bug, because nothing here rules out an environment problem
+  that has been present in every run so far (for example, a CI runner that
+  is always short of resources).
+- **`PASS_ONLY`**: every recorded run passed. This does not prove the test
+  can never fail. It only means no failure has been recorded so far. A test
+  with one day of passing history and a test with a year of it are reported
+  the same way, because the assessment describes the *kind* of history, not
+  *how much* of it there is.
+- **`INSUFFICIENT_HISTORY`**: the most cautious label, and the default when
+  nothing stronger can be justified. It covers three different situations,
+  which are deliberately not split apart:
+  1. fewer than two runs (not counting skipped ones) have been recorded;
+  2. results are mixed (some passed, some failed) but **never on the same
+     commit**. For example, a test failed on commit A and passed on commit
+     B, which is exactly what a real fix looks like, not flakiness;
+  3. the commit SHA was not recorded for the runs being compared, so "the
+     same code" was never actually established. Two runs with no recorded
+     commit are never treated as the same commit just because both are
+     missing one.
+
+### How tests are identified
+
+A test's history is stored under `<framework>::<classname>::<name>`, built
+from whatever the JUnit XML provides. That format offers nothing more
+reliable. Two things are worth knowing before you depend on it:
+
+- **Reports without a `classname`** (some minimal JUnit writers leave it out)
+  will merge any two tests that share the same `name`, even if they live in
+  completely unrelated files. This is tested and documented behavior (see
+  the "ambiguous test identities" cases in `tests/history.test.ts`), not a
+  bug waiting for a fix. It is a natural limit of identifying tests from
+  JUnit XML alone, in the same way that the log parsers in `parser.ts` only
+  handle the common case for each format.
+- **`history show <name>`** searches for your text inside both the test name
+  and the full test ID. If more than one tracked test matches (for example,
+  the same test name under two different classnames), it lists all of them
+  instead of guessing which one you meant. Use the full test ID shown in
+  that output to pick exactly one.
+
+### Limits of the JUnit XML parser
+
+The parser (`src/junit-parser.ts`) is a small extractor built on regular
+expressions, not a general XML parser. It makes the same trade off as the
+log parsers in `parser.ts`. In particular:
+
+- **XML namespaces are not supported.** A report that uses
+  `<ns:testsuite>` or `<ns:testcase>` matches none of the parser's patterns
+  and is rejected as "not a recognized JUnit report" (`JUnitParseError`).
+  That is a loud, clear failure rather than a silent report of zero tests.
+- **A `<testcase>` with both a `<failure>` and an `<error>` element**
+  (unusual, but valid) uses only the first one in the document as evidence.
+  A warning is recorded so the second one is not silently lost.
+- **Duplicate `<testcase>` entries in one report** (for example, from a
+  plugin that reruns failed tests) are not merged. Each one becomes its own
+  recorded run under the same `run_id`. If their results differ, that alone
+  can produce `INTERMITTENCY_OBSERVED` from retries inside a single CI job,
+  rather than from two independent runs. Keep this in mind if your test
+  runner automatically retries failing tests before writing the report.
+- **A cut off or broken `<testcase>` block** (an opening tag with no closing
+  tag before the file ends) is left out and flagged with a warning instead
+  of being silently miscounted. This is based on counting tags, though, so
+  it is not a full check that the XML is well formed.
 
 ### Keeping history across CI runs
 
-GitHub-hosted runners are ephemeral: a `.flaky-finder/history.db` created in
-one job is gone by the next, so `history ingest` alone records almost nothing
-useful in CI. [`.github/workflows/history-persistence-example.yml`](.github/workflows/history-persistence-example.yml)
-shows how to keep it in the Actions cache: restore the latest copy, ingest
-the run's JUnit report, then save it under a new key (a cache entry can't be
-overwritten, so each run saves a new one and restores the newest by prefix).
+GitHub hosted runners are thrown away after each job, so a
+`.flaky-finder/history.db` created in one job is gone by the next. On its
+own, `history ingest` therefore records almost nothing useful in CI.
 
-Know its limits before relying on it (from GitHub's
+[`.github/workflows/history-persistence-example.yml`](.github/workflows/history-persistence-example.yml)
+shows how to keep the database in the GitHub Actions cache. It restores the
+latest copy, ingests the run's JUnit report, and then saves the database
+under a new key. A cache entry cannot be overwritten, so each run saves a new
+one and the next run restores the newest one by matching the start of its
+name.
+
+Know its limits before you rely on it (from GitHub's
 [dependency caching docs](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)):
 
-- **Branch scope:** a run can restore caches from its own branch or the
-  default branch only. Record history on the default branch so there is one
+- **Branch scope.** A run can only restore caches from its own branch or the
+  default branch. Record history on the default branch so there is one
   shared copy.
-- **Eviction:** entries not accessed for 7 days are deleted, and a repository
-  has a 10 GB cache limit by default. If nothing runs for a week, history
-  starts over.
-- **Concurrent runs:** two overlapping runs restore the same old copy, and
-  whichever saves last wins, so the other run's ingestion is lost. The
-  example uses a `concurrency` group to run one at a time.
+- **Eviction.** Cache entries that are not used for 7 days are deleted, and
+  each repository has a 10 GB cache limit by default. If nothing runs for a
+  week, history starts over.
+- **Runs at the same time.** Two overlapping runs restore the same old copy,
+  and whichever one saves last wins, so the other run's data is lost. The
+  example uses a `concurrency` group so that only one run happens at a time.
 
-The cache is the simplest option, not a durable store. If you need history
-that never expires or is shared across branches, keep the db somewhere you
-control (for example an artifact store or a storage bucket). A hosted
-database is still out of scope.
+The cache is the simplest option, not permanent storage. If you need history
+that never expires or is shared across branches, keep the database somewhere
+you control, such as an artifact store or a storage bucket.
+
+### What is deliberately out of scope
+
+**No automatic retries and no merge blocking.** History ingestion and
+analysis never change your CI pipeline. This tool records and reports. It
+does not rerun tests or block a pull request based on what it finds. Acting
+on a history assessment (retrying a run, blocking a merge, or automatically
+dismissing a failure) is a policy decision for whoever sets this up. It
+stays a deliberate choice that a team makes, never a default that this
+project ships with.
+
+Also out of scope for now: a hosted or shared database (only local SQLite is
+supported, see [Keeping history across CI runs](#keeping-history-across-ci-runs)),
+and any input format for history other than JUnit XML.
 
 ## Data handling and privacy
 
@@ -650,90 +663,152 @@ CI logs and test reports can contain internal URLs, user IDs, request
 payloads, environment variables and credentials. Here is exactly where
 flaky-finder sends or keeps that text.
 
-**`analyze` (rules only, the default):** reads the log locally and prints
-results. Nothing is stored or sent anywhere. The output (text or `--json`)
-quotes evidence lines from your log, so wherever you print or upload it
-(CI logs, PR comments) can expose what those lines contain.
+**`analyze` (rules only, the default)** reads the log on your machine and
+prints the results. Nothing is stored or sent anywhere. Keep in mind that the
+output (text or `--json`) quotes evidence lines from your log, so wherever
+you print or upload it (CI logs, pull request comments) can expose what those
+lines contain.
 
-**The optional LLM fallback sends log text to a third party.** It runs only
-when `FLAKY_FINDER_API_KEY` is set, and only for failures no rule matched.
-For each of those, up to the first **4,000 characters** of the failure's
-text go to the endpoint in `FLAKY_FINDER_BASE_URL` (Groq by default).
-That text is not redacted. If your logs can contain secrets or customer
-data, either leave the key unset or point `FLAKY_FINDER_BASE_URL` at a
-model you run yourself (for example Ollama, see `.env.example`).
+**The optional LLM fallback sends log text to a third party.** It only runs
+when `FLAKY_FINDER_API_KEY` is set, and only for failures that no rule
+matched. For each of those, up to the first **4,000 characters** of the
+failure text are sent to the endpoint in `FLAKY_FINDER_BASE_URL` (Groq by
+default). That text is not redacted. If your logs might contain secrets or
+customer data, either leave the key unset or point `FLAKY_FINDER_BASE_URL` at
+a model you run yourself, such as Ollama (see `.env.example`).
 
 **`history ingest` stores a summary, not the report.** In
 `.flaky-finder/history.db` it keeps:
 
-- per report: a SHA-256 hash of its content, the run id, commit SHA,
-  environment id, framework, the report's file path, and the time;
-- per test case: test name, classname, outcome, and the same run details;
-- per failed test only: the verdict, rule id, ruleset version, the
+- for each report: a SHA-256 hash of its content, the run ID, commit SHA,
+  environment ID, framework, the report's file path, and the time;
+- for each test case: the test name, classname, outcome, and the same run
+  details;
+- for failed tests only: the verdict, rule ID, rule set version, the
   **matched evidence line**, and the explanation (which quotes that line).
 
-The full report and full failure text are **not** stored. The evidence line
-is still raw log text, though, and can contain anything that line
+The full report and the full failure text are **not** stored. The evidence
+line is still raw log text, though, so it can contain anything that line
 contained.
 
-**Retention and deletion:** there is no automatic expiry. History is kept
+**Retention and deletion.** Nothing expires automatically. History is kept
 until you delete it. To delete everything, delete the database file
-(`.flaky-finder/history.db`, or your `--db` path). It's gitignored by
-default, so it isn't committed by accident. Deleting individual runs or
-tests isn't supported yet.
+(`.flaky-finder/history.db`, or whatever path you passed to `--db`). The file
+is ignored by git by default, so it will not be committed by accident.
+Deleting individual runs or tests is not supported yet.
 
 **If you use the cache example workflow**, the database is uploaded to the
-GitHub Actions cache for your repository. It's evicted after 7 days without
-access ([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)).
-Treat it like any other CI artifact that can contain log text.
+GitHub Actions cache for your repository. It is removed after 7 days without
+use ([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)).
+Treat it like any other CI artifact that might contain log text.
 
-## Supported CI tools today
+## Limitations
 
-pytest, Jest, Playwright. Adding a framework is one function in
-`src/parser.ts` — PRs for Vitest, Go test, JUnit/Maven, and RSpec welcome,
-along with representative sample logs.
+Here they are, stated plainly, because the whole point of this project is to
+avoid overclaiming. This section describes what the tool does **not**
+establish.
+
+- **A matched signature does not prove a test is flaky.** A timeout caused by
+  a slow CI runner and a timeout caused by a real regression (say, an
+  element that never renders) produce *exactly the same error text*. The
+  rule engine reports the signature either way and says so clearly. It does
+  not and cannot tell which one happened.
+- **Every log verdict still comes from a single log.** Historical tracking
+  (described above) adds a separate assessment based on many runs, but only
+  if you ingest JUnit XML reports over time. Without that, there is no run
+  history, and FlakyRadar's flip detection remains the more complete version
+  of this idea.
+- **Support for multiple frameworks is a best effort.** The parser pulls out
+  a test name and the failure text. It cannot yet tell apart a first failure
+  from a retry that later passed, a test skipped after a setup failure, or a
+  failure caused by a different test. Think of each framework's parser as
+  "handles the common case", not a complete model of that tool's output.
+- **The tests check that the rules behave as written, not that they are
+  right.** A passing test suite means the regular expressions match what
+  they were built to match. That includes the tricky case where a matching
+  signature hides a real regression, the documented order for overlapping
+  matches (and that a lower priority observation in the same log is shown
+  rather than dropped), basic robustness (empty input, cut off input, same
+  result every time), and the checks on the LLM step (`tests/llm.test.ts`
+  makes sure a model cannot push `SUSPECTED_REGRESSION` above low
+  confidence, an unknown verdict cannot slip through, and broken output
+  causes an error instead of a made up result). It is not a measure of
+  accuracy against real failures that people have labeled. No such
+  benchmark exists yet.
+- **A regular expression can match in a misleading place.** Every rule
+  matches on literal text. If a log contains one of these strings outside
+  its usual meaning (in a comment, a quoted example, or unrelated noise),
+  the rule still fires. That risk comes with matching text patterns, and
+  this version does not try to explain it away. It is also exactly why
+  every match must quote its evidence line, so a person can spot the
+  problem right away.
+- **Not every open weight model works as the LLM fallback.** This was found
+  while building the project: a reasoning ("thinking") model (Qwen3)
+  combined with forced JSON output (`response_format: json_object`) through
+  Ollama never answered within 2 minutes, even with `max_tokens` set. It is
+  a real conflict between forcing structured output and the model's
+  internal `<think>` phase, and it cannot be fixed from the client side. A
+  plain instruct model (Llama 3.2 or 3.1) has none of these problems and
+  answers in seconds. If you run everything locally, choose a model without
+  a reasoning phase for this endpoint.
+
+## Supported CI tools
+
+pytest, Jest and Playwright. Adding a framework takes one function in
+`src/parser.ts`. Pull requests for Vitest, Go test, JUnit/Maven and RSpec are
+welcome, ideally with a few realistic sample logs.
 
 ## Roadmap
 
-- [x] Run-history tracking (`history ingest`/`show`/`report`) — see
-      "Historical tracking" above for what it does and doesn't establish.
-- [ ] Advisory-only GitHub Action: comment the verdict on a failing PR check.
-      **Not** auto-retry or auto-merge-block by default — a wrong or
-      unresolved verdict should never silently change what CI does; a team
-      can opt into stricter policy later, deliberately.
-- [ ] More frameworks: Vitest, Go test, RSpec
-- [ ] A small labeled benchmark of real flaky/real-bug/ambiguous failures, to
-      measure false-signal and false-dismissal rates honestly instead of
-      just "tests pass"
-- [x] A documented CI persistence step for `.flaky-finder/history.db`
-      across ephemeral GitHub-hosted runners — see "Keeping history across CI
-      runs" above.
-- [x] Machine-readable `--json` output (the input a PR-comment action needs).
+Done:
+
+- [x] Run history tracking (`history ingest`, `show` and `report`). See
+      [Historical tracking](#historical-tracking) for what it does and does
+      not establish.
+- [x] A documented way to keep `.flaky-finder/history.db` between GitHub
+      hosted runners. See
+      [Keeping history across CI runs](#keeping-history-across-ci-runs).
+- [x] Machine readable `--json` output (what an action that comments on pull
+      requests needs).
 - [x] Custom rules from a JSON file (`FLAKY_FINDER_RULES_FILE`).
-- [ ] Custom rules in `history ingest` (needs a schema change; see "Custom
-      rules").
-- [x] Failure signature groups: `analyze` groups its own results by which
-      rule decided them — see "Failure signature groups" above for what it
-      does and does not establish.
-- [ ] Normalized-evidence grouping (near-duplicate, not identical, error
-      text) — deferred until there's a documented normalization policy and
-      examples proving it doesn't merge genuinely unrelated failures (e.g.
-      two different internal hostnames in the same error shape).
-- [ ] Similarity- or LLM-based correlation across *different* rules (e.g.
-      guessing that a DNS failure and a timeout are one outage) — deferred
-      until there's a labeled, independently-verified multi-failure dataset
-      to measure it against, same reasoning as the single-failure
-      labeled-benchmark item above. Grouping failures that already share a
-      rule needed no such dataset; inferring a link between failures that
-      *don't* is a materially stronger claim and needs one.
-- [ ] Cross-run incident correlation (the history-tracking equivalent of
-      failure signature groups, across `failure_evidence` rows instead of
-      within one `analyze` run) — not started.
+- [x] Failure signature groups: `analyze` groups its own results by the rule
+      that decided them. See
+      [Failure signature groups](#failure-signature-groups) for what it does
+      and does not establish.
+
+Planned:
+
+- [ ] An advisory GitHub Action that comments the verdict on a failing pull
+      request check. By default it will **not** retry anything or block a
+      merge. A wrong or unclear verdict should never silently change what CI
+      does. A team can choose a stricter policy later, on purpose.
+- [ ] More frameworks: Vitest, Go test, RSpec.
+- [ ] A small benchmark of real failures labeled as flaky, real bug or
+      unclear, to honestly measure how often the tool raises a false signal
+      or wrongly dismisses a failure, instead of just saying "the tests
+      pass".
+- [ ] Custom rules in `history ingest`. This needs a database schema change
+      (see [Custom rules](#custom-rules-flaky_finder_rules_file)).
+- [ ] Grouping errors with similar (but not identical) text. This is on hold
+      until there is a written policy for how text gets smoothed out, plus
+      examples showing that it does not merge failures that are actually
+      unrelated (for example, two different internal hostnames in the same
+      error format).
+- [ ] Linking failures across *different* rules using similarity or an LLM
+      (for example, guessing that a DNS failure and a timeout are the same
+      outage). This is on hold until there is a labeled and independently
+      checked dataset of multiple failures to measure it against, for the
+      same reason as the benchmark above. Grouping failures that already
+      share a rule needed no such dataset. Claiming a link between failures
+      that *do not* share one is a much stronger claim, and it does.
+- [ ] Linking incidents across runs (the history version of failure
+      signature groups, working across `failure_evidence` rows instead of
+      within one `analyze` run). Not started.
 
 ## Contributing
 
-Contributions are welcome — new rules, new framework parsers, and sample
-logs especially. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are very welcome, especially new rules, new framework parsers
+and sample logs. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 ## License
 
