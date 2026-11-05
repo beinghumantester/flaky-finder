@@ -1,0 +1,11 @@
+  1) [chromium] › reports.spec.ts:28:5 › large report renders fully
+
+     Error: Protocol error: Connection closed
+         at CDPSession.send (lib/cdp-session.ts:19:9)
+         at async TestCase.run (reports.spec.ts:28:5)
+
+     The runner's process monitor recorded this browser process being
+     terminated by the OOM killer 40ms before this error surfaced.
+
+  1 failed
+    [chromium] › reports.spec.ts:28:5 › large report renders fully

@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_create_user_account _______________________
+
+    def test_create_user_account():
+        repo = UserRepository(db)
+>       repo.create(email="new.user@example.com")
+E       sqlite3.IntegrityError: UNIQUE constraint failed: users.email
+
+tests/test_users.py:28: IntegrityError
+======================= short test summary info ======================
+FAILED tests/test_users.py::test_create_user_account - sqlite3.IntegrityError

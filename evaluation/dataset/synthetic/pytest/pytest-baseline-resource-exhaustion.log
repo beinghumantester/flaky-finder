@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_bulk_export_opens_all_shards _______________________
+
+    def test_bulk_export_opens_all_shards():
+        exporter = ShardExporter()
+>       exporter.open_all()
+E       OSError: [Errno 24] Too many open files: '/data/shards/shard_0041.db'
+
+tests/test_export.py:19: OSError
+======================= short test summary info ======================
+FAILED tests/test_export.py::test_bulk_export_opens_all_shards - OSError

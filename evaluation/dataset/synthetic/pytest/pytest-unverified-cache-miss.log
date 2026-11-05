@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_cached_pricing_lookup _______________________
+
+    def test_cached_pricing_lookup():
+        cache = PricingCache()
+>       cache.get("sku_4471")
+E       CacheMissError: key not found
+
+tests/test_pricing_cache.py:11: CacheMissError
+======================= short test summary info ======================
+FAILED tests/test_pricing_cache.py::test_cached_pricing_lookup - CacheMissError

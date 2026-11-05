@@ -1,0 +1,12 @@
+ FAIL  src/auth/__tests__/verify-token.test.ts
+  ● verifyToken › accepts a freshly issued token
+
+    TokenError: token validation failed: 'nbf' claim is in the future
+
+    Runner's system clock was measured 92 seconds behind NTP at the moment
+    of this run (see runner-clock-check step in the job log).
+
+      20 |   const token = issueToken(user);
+    > 21 |   expect(verifyToken(token).valid).toBe(true);
+
+      at Object.<anonymous> (src/auth/__tests__/verify-token.test.ts:21:30)

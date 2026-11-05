@@ -1,0 +1,9 @@
+  1) [chromium] › support.spec.ts:13:5 › support page renders the chat launcher
+
+     Error: embedded chat widget iframe threw during initialization, aborting
+     the page's load event before this assertion ran
+         at SupportPage.waitForChatLauncher (pages/support-page.ts:11:5)
+         at async TestCase.run (support.spec.ts:13:5)
+
+  1 failed
+    [chromium] › support.spec.ts:13:5 › support page renders the chat launcher

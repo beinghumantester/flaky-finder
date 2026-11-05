@@ -1,0 +1,11 @@
+  1) [chromium] › pricing.spec.ts:7:5 › pricing page loads without console errors
+
+     Error: page error captured during test: "au is not a function"
+         at eval (https://cdn.vendor-analytics.example/snippet.js:1:4821)
+
+     No stack trace into this project's own code is available; the error
+     originates entirely inside the third-party analytics snippet.
+         at async TestCase.run (pricing.spec.ts:7:5)
+
+  1 failed
+    [chromium] › pricing.spec.ts:7:5 › pricing page loads without console errors

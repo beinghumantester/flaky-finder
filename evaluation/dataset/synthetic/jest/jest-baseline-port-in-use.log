@@ -1,0 +1,6 @@
+ FAIL  src/server/__tests__/boot.test.ts
+  ● server boot › starts and accepts a health check
+
+    Error: listen EADDRINUSE: address already in use :::4000
+        at Server.setupListenHandle (node:net:1484:16)
+        at Object.<anonymous> (src/server/__tests__/boot.test.ts:9:10)

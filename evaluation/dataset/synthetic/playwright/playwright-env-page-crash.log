@@ -1,0 +1,11 @@
+  1) [chromium] › report-builder.spec.ts:40:5 › renders a large report preview
+
+     Error: Page crashed!
+
+     Runner memory telemetry shows 3 other browser-driven jobs active on
+     this host at the time of the crash.
+         at ReportPage.renderPreview (pages/report-page.ts:33:9)
+         at async TestCase.run (report-builder.spec.ts:40:5)
+
+  1 failed
+    [chromium] › report-builder.spec.ts:40:5 › renders a large report preview

@@ -1,0 +1,14 @@
+ FAIL  src/lib/__tests__/sync.test.ts
+  ● remote sync › completes a full inventory push
+
+    This test's retry budget is 1 of 1 (no further retries configured);
+    both the original attempt and the single retry raised the identical
+    error below, from the same remote host.
+
+    FetchError: operation did not complete before the client gave up
+    waiting on a response from inventory.internal
+
+      30 |   await syncInventory();
+    > 31 |
+
+      at Object.<anonymous> (src/lib/__tests__/sync.test.ts:31:3)

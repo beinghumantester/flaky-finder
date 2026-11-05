@@ -1,0 +1,4 @@
+ FAIL  src/parser/__tests__/tokenize.test.ts
+  ● tokenize › handles a minimal input
+
+    Error: Unexpected token

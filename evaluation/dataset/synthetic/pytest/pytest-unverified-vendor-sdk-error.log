@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_process_payment _______________________
+
+    def test_process_payment():
+        gateway = PaymentGateway()
+>       gateway.charge(amount=4200, token="tok_test")
+E       vendorsdk.InternalError: an unexpected condition occurred
+
+tests/test_payment.py:17: InternalError
+======================= short test summary info ======================
+FAILED tests/test_payment.py::test_process_payment - vendorsdk.InternalError

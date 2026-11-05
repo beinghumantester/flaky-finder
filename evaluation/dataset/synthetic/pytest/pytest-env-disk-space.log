@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_generate_report_archive _______________________
+
+    def test_generate_report_archive():
+        writer = ArchiveWriter(tmp_path)
+>       writer.write(report_bytes)
+E       OSError: write failed: insufficient space remaining on the runner's disk volume
+
+tests/test_archive.py:40: OSError
+======================= short test summary info ======================
+FAILED tests/test_archive.py::test_generate_report_archive - OSError

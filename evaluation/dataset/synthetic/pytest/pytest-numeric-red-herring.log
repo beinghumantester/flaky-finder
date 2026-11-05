@@ -1,0 +1,12 @@
+============================= FAILURES ==============================
+_______________________ test_checkout_api_returns_order_status _______________________
+
+    def test_checkout_api_returns_order_status():
+        resp = client.post("/checkout", json=payload)
+        # Response time 420ms (SLA budget for this endpoint: 500ms) - well within budget.
+>       assert resp.json()["status"] == "confirmed"
+E       assert 'pending_review' == 'confirmed'
+
+tests/test_checkout.py:33: AssertionError
+======================= short test summary info ======================
+FAILED tests/test_checkout.py::test_checkout_api_returns_order_status - assert 'pending_review' == 'confirmed'
