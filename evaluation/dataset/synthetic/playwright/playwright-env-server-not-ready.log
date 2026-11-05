@@ -1,0 +1,12 @@
+  1) [chromium] › smoke.spec.ts:6:5 › home page renders
+
+     Error: connection to http://localhost:4000 refused immediately
+
+     The app server process had not finished starting when this test began;
+     its own boot log shows "listening on :4000" printed 1.8s AFTER this
+     navigation was attempted.
+         at HomePage.goto (pages/home-page.ts:9:5)
+         at async TestCase.run (smoke.spec.ts:6:5)
+
+  1 failed
+    [chromium] › smoke.spec.ts:6:5 › home page renders

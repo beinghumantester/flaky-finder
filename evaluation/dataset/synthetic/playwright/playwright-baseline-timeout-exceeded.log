@@ -1,0 +1,10 @@
+  1) [chromium] › dashboard.spec.ts:12:5 › widgets load within budget
+
+     Test timeout of 30000ms exceeded.
+
+     Error: page.waitForSelector: Test timeout of 30000ms exceeded.
+         at DashboardPage.waitForWidgets (pages/dashboard-page.ts:22:14)
+         at async TestCase.run (dashboard.spec.ts:12:5)
+
+  1 failed
+    [chromium] › dashboard.spec.ts:12:5 › widgets load within budget

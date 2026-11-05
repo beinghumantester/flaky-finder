@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_sales_tax_for_multi_item_cart _______________________
+
+    def test_sales_tax_for_multi_item_cart():
+        cart = Cart(items=[Item(price=1000, qty=3)])
+>       assert cart.sales_tax(rate=Decimal("0.0825")) == Decimal("247.50")
+E       assert Decimal('82.50') == Decimal('247.50')
+
+tests/test_tax.py:22: AssertionError
+======================= short test summary info ======================
+FAILED tests/test_tax.py::test_sales_tax_for_multi_item_cart - assert Decimal('82.50') == Decimal('247.50')

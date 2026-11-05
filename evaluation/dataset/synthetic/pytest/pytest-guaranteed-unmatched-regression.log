@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_invoice_total_with_discount_code _______________________
+
+    def test_invoice_total_with_discount_code():
+        invoice = Invoice(items=[LineItem(price=250, qty=2)])
+>       assert invoice.total_with_discount(code="SAVE15") == 425
+E       assert 500 == 425
+
+tests/test_invoice.py:47: AssertionError
+======================= short test summary info ======================
+FAILED tests/test_invoice.py::test_invoice_total_with_discount_code - assert 500 == 425

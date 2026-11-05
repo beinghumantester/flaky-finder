@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_sync_remote_inventory _______________________
+
+    def test_sync_remote_inventory():
+        client = WarehouseClient()
+>       client.push_batch(items)
+E       requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+
+tests/test_warehouse.py:21: ConnectionError
+======================= short test summary info ======================
+FAILED tests/test_warehouse.py::test_sync_remote_inventory - requests.exceptions.ConnectionError

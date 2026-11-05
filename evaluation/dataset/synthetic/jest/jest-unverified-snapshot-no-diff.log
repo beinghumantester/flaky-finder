@@ -1,0 +1,13 @@
+ FAIL  src/components/__tests__/ProductCard.test.tsx
+  ● ProductCard › matches its stored snapshot
+
+    expect(received).toMatchSnapshot()
+
+    Snapshot mismatch detected. The diff output for this snapshot was
+    elided by the reporter configuration in this CI environment; no
+    further detail on what changed is available in this log.
+
+      9 |   const tree = render(<ProductCard {...props} />);
+    > 10 |   expect(tree).toMatchSnapshot();
+
+      at Object.<anonymous> (src/components/__tests__/ProductCard.test.tsx:10:16)

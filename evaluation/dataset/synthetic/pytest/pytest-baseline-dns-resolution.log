@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_fetch_exchange_rates _______________________
+
+    def test_fetch_exchange_rates():
+        client = RatesClient()
+>       client.fetch("latest")
+E       requests.exceptions.ConnectionError: HTTPSConnectionPool(host='rates.example.internal', port=443): Max retries exceeded: Failed to resolve 'rates.example.internal' ([Errno -2] Name or service not known) socket.gaierror: [Errno -2] ENOTFOUND
+
+tests/test_rates.py:14: ConnectionError
+======================= short test summary info ======================
+FAILED tests/test_rates.py::test_fetch_exchange_rates - requests.exceptions.ConnectionError

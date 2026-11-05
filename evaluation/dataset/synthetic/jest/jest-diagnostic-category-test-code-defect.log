@@ -1,0 +1,17 @@
+ FAIL  src/api/__tests__/items.test.ts
+  ● items endpoint › returns the expected item count
+
+    The API now intentionally returns an extra "metadata" entry alongside
+    each item (see CHANGELOG.md, "Add response metadata envelope") - this
+    assertion was written before that change shipped and was never updated.
+
+    expect(received).toBe(expected)
+
+    Expected: 3
+    Received: 4
+
+      15 |   const res = await client.get('/items');
+    > 16 |   expect(res.data.length).toBe(3);
+      17 |
+
+      at Object.<anonymous> (src/api/__tests__/items.test.ts:16:28)

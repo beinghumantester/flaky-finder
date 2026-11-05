@@ -1,0 +1,8 @@
+  1) [chromium] › multi-tab.spec.ts:5:5 › opens several browser contexts
+
+     Error: Too many open files
+         at Browser.newContext (lib/browser-pool.ts:28:9)
+         at async TestCase.run (multi-tab.spec.ts:5:5)
+
+  1 failed
+    [chromium] › multi-tab.spec.ts:5:5 › opens several browser contexts

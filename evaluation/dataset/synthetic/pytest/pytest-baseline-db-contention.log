@@ -1,0 +1,11 @@
+============================= FAILURES ==============================
+_______________________ test_concurrent_order_writes _______________________
+
+    def test_concurrent_order_writes():
+        with db.transaction():
+>           order.save()
+E       sqlite3.OperationalError: database is locked
+
+tests/test_orders.py:52: OperationalError
+======================= short test summary info ======================
+FAILED tests/test_orders.py::test_concurrent_order_writes - sqlite3.OperationalError

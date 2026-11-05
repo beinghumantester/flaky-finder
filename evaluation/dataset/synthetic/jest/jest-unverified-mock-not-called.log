@@ -1,0 +1,12 @@
+ FAIL  src/lib/__tests__/analytics.test.ts
+  ● analytics › records a page view on mount
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+      14 |   render(<Page />);
+    > 15 |   expect(trackPageView).toHaveBeenCalled();
+
+      at Object.<anonymous> (src/lib/__tests__/analytics.test.ts:15:25)

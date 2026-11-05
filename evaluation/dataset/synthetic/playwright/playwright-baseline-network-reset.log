@@ -1,0 +1,9 @@
+  1) [chromium] › onboarding.spec.ts:9:5 › new user can complete setup
+
+     Error: fetch failed
+         caused by: Error: ECONNRESET - Connection reset by peer
+         at OnboardingPage.submitStep (pages/onboarding-page.ts:15:5)
+         at async TestCase.run (onboarding.spec.ts:9:5)
+
+  1 failed
+    [chromium] › onboarding.spec.ts:9:5 › new user can complete setup

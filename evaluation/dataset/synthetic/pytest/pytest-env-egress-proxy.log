@@ -1,0 +1,14 @@
+============================= FAILURES ==============================
+_______________________ test_fetch_partner_catalog _______________________
+
+    def test_fetch_partner_catalog():
+        client = PartnerClient()
+>       client.fetch_catalog()
+E       UpstreamRequestError: upstream request did not receive a response before the configured deadline
+
+    The corporate egress proxy's own access log shows a timeout recorded
+    for this exact outbound request id at the same second this test failed.
+
+tests/test_partner.py:23: UpstreamRequestError
+======================= short test summary info ======================
+FAILED tests/test_partner.py::test_fetch_partner_catalog - UpstreamRequestError

@@ -1,0 +1,13 @@
+============================= FAILURES ==============================
+_______________________ test_health_endpoint_returns_200 _______________________
+
+    def test_health_endpoint_returns_200():
+        resp = client.get("/health")
+>       assert resp.status_code == 200
+E       assert 503 == 200
+
+    Note: this service was redeployed 2 minutes before this test ran.
+
+tests/test_health.py:9: AssertionError
+======================= short test summary info ======================
+FAILED tests/test_health.py::test_health_endpoint_returns_200 - assert 503 == 200
