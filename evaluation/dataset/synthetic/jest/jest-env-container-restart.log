@@ -1,0 +1,12 @@
+ FAIL  src/integration/__tests__/inventory-service.test.ts
+  ● inventory service client › fetches current stock levels
+
+    Error: the connection to the service ended without a response
+
+    Orchestrator event log shows this service's pod was evicted and
+    restarted 1.2 seconds into this test's request.
+
+      11 |   const client = new InventoryClient();
+    > 12 |   const stock = await client.getStock('sku_118');
+
+      at Object.<anonymous> (src/integration/__tests__/inventory-service.test.ts:12:25)

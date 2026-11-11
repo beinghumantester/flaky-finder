@@ -1,0 +1,7 @@
+ FAIL  src/lib/__tests__/format-date.test.ts
+  ● formatDate › renders today's date in the long format
+
+    RangeError: Invalid time value
+        at Date.toLocaleDateString (<anonymous>)
+        at formatDate (src/lib/format-date.ts:8:14)
+        at Object.<anonymous> (src/lib/__tests__/format-date.test.ts:11:18)

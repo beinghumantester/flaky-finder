@@ -1,0 +1,8 @@
+  1) [chromium] › cart.spec.ts:24:5 › removing an item updates the subtotal
+
+     StaleElementReferenceException: stale element reference: element is not attached to the page document
+         at CartPage.removeItem (pages/cart-page.ts:40:9)
+         at async TestCase.run (cart.spec.ts:24:5)
+
+  1 failed
+    [chromium] › cart.spec.ts:24:5 › removing an item updates the subtotal

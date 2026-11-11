@@ -1,0 +1,20 @@
+2026-11-03T05:27:00.1234567Z [31m[1m============================= FAILURES ==============================[0m
+2026-11-03T05:27:01.1234568Z [31m[1m_______________________ test_fetch_user_retries _______________________[0m
+2026-11-03T05:27:02.1234569Z 
+2026-11-03T05:27:03.1234570Z     def test_fetch_user_retries():
+2026-11-03T05:27:04.1234571Z         client = APIClient()
+2026-11-03T05:27:05.1234572Z >       response = client.get("/users/42")
+2026-11-03T05:27:06.1234573Z [1m[31mE       requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))[0m
+2026-11-03T05:27:07.1234574Z 
+2026-11-03T05:27:08.1234575Z tests/test_api.py:34: ConnectionError
+2026-11-03T05:27:09.1234576Z [31m[1m_______________________ test_discount_calculation _______________________[0m
+2026-11-03T05:27:10.1234577Z 
+2026-11-03T05:27:11.1234578Z     def test_discount_calculation():
+2026-11-03T05:27:12.1234579Z         cart = Cart(items=[Item(price=100, qty=2)])
+2026-11-03T05:27:13.1234580Z >       assert cart.total_with_discount(code="SAVE10") == 180
+2026-11-03T05:27:14.1234581Z [1m[31mE       assert 200 == 180[0m
+2026-11-03T05:27:15.1234582Z 
+2026-11-03T05:27:16.1234583Z tests/test_cart.py:58: AssertionError
+2026-11-03T05:27:17.1234584Z [31m[1m======================= short test summary info ======================[0m
+2026-11-03T05:27:18.1234585Z FAILED tests/test_api.py::test_fetch_user_retries - requests.exceptions.ConnectionError
+2026-11-03T05:27:19.1234586Z FAILED tests/test_cart.py::test_discount_calculation - assert 200 == 180

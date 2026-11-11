@@ -1,0 +1,8 @@
+  1) [chromium] › settings.spec.ts:30:5 › saving preferences shows a toast
+
+     Error: Target closed
+         at SettingsPage.save (pages/settings-page.ts:18:7)
+         at async TestCase.run (settings.spec.ts:30:5)
+
+  1 failed
+    [chromium] › settings.spec.ts:30:5 › saving preferences shows a toast

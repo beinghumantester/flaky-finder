@@ -1,0 +1,31 @@
+2026-11-04T14:22:21.0782918Z        ●  Installing template /__w/strapi/strapi/tests/app-template
+2026-11-04T14:22:21.1451743Z 
+2026-11-04T14:22:21.3276973Z        ✓  Template copied successfully.
+2026-11-04T14:22:21.3278237Z        ●  Installing template /__w/strapi/strapi/tests/app-template
+2026-11-04T14:34:48.5810779Z     Error Context: test-apps/e2e/test-results/i18n-8000/settings-Settings-As-a-use-05dea-ate-an-entry-in-that-locale-webkit-retry3/error-context.md
+2026-11-04T14:34:48.5811875Z 
+2026-11-04T14:34:48.5813411Z   2) [webkit] › tests/e2e/tests/i18n/editview.spec.ts:554:7 › Edit view › As a user I want to see non translatable fields pre-filled when creating a new locale of a document 
+2026-11-04T14:34:48.5814514Z 
+2026-11-04T14:34:48.5814756Z     Error: page.reload: Page crashed
+2026-11-04T14:34:48.5815238Z     Call log:
+2026-11-04T14:34:48.5815908Z     [2m  - waiting for navigation until "domcontentloaded"[22m
+2026-11-04T14:34:48.5816365Z 
+2026-11-04T14:34:48.5816374Z 
+2026-11-04T14:34:48.5816612Z        at ../../../utils/restart.ts:101
+2026-11-04T14:34:48.5816950Z 
+2026-11-04T14:34:48.5817105Z        99 |     );
+2026-11-04T14:34:48.5817576Z       100 |     await pollHealthCheck();
+2026-11-04T14:34:48.5818276Z     > 101 |     await page.reload({ waitUntil: 'domcontentloaded' });
+2026-11-04T14:34:48.5818922Z           |                ^
+2026-11-04T14:34:48.5819640Z       102 |     // Optionally, wait again for the modal to disappear after reloading
+2026-11-04T14:34:48.5820417Z       103 |   }
+2026-11-04T14:34:48.5820795Z       104 |
+2026-11-04T14:34:48.5821491Z         at waitForRestart (/__w/strapi/strapi/tests/utils/restart.ts:101:16)
+2026-11-04T14:34:48.5822722Z         at /__w/strapi/strapi/tests/e2e/tests/i18n/editview.spec.ts:594:5
+2026-11-04T14:34:48.5823238Z 
+2026-11-04T14:34:48.5823400Z   1 failed
+2026-11-04T14:34:48.5824688Z     [webkit] › tests/e2e/tests/i18n/settings.spec.ts:19:7 › Settings › As a user I want to create a locale and then create an entry in that locale 
+2026-11-04T14:34:48.5825772Z   1 flaky
+2026-11-04T14:34:48.5827246Z     [webkit] › tests/e2e/tests/i18n/editview.spec.ts:554:7 › Edit view › As a user I want to see non translatable fields pre-filled when creating a new locale of a document 
+2026-11-04T14:34:48.5828475Z   2 skipped
+2026-11-04T14:34:48.5828847Z   13 passed (11.8m)

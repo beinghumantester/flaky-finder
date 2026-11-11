@@ -1,0 +1,16 @@
+ FAIL  src/lib/__tests__/pricing.test.ts
+  ● pricing › applies the loyalty discount tier correctly
+
+    Retried 3 of 3 allowed times (this suite's full retry budget); all three
+    attempts raised the same error on the same line.
+
+    expect(received).toBe(expected)
+
+    Expected: 72
+    Received: 80
+
+      18 |   const total = applyLoyaltyDiscount(cart, tier);
+    > 19 |   expect(total).toBe(72);
+      20 |
+
+      at Object.<anonymous> (src/lib/__tests__/pricing.test.ts:19:18)

@@ -1,0 +1,10 @@
+  1) [chromium] › auth.spec.ts:21:5 › login redirects to the account page
+
+     Error: expected page URL to match /\/account$/, got "/account/welcome-v2"
+         at LoginPage.assertRedirect (pages/login-page.ts:14:7)
+         at async TestCase.run (auth.spec.ts:21:5)
+
+     This redirect target is consistent across every run on this branch.
+
+  1 failed
+    [chromium] › auth.spec.ts:21:5 › login redirects to the account page

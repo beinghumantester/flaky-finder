@@ -1,0 +1,10 @@
+2026-11-04T22:35:55.0725010Z      [33m[2m✓[22m[39m keeps the table rows mounted across a refresh[33m 1513[2mms[22m[39m
+2026-11-04T22:35:55.0727298Z      [33m[2m✓[22m[39m keeps the pause dialog open in the card view across a refresh[33m 1232[2mms[22m[39m
+2026-11-04T22:35:55.0729111Z      [33m[2m✓[22m[39m keeps the pause dialog open in the table view across a refresh[33m 1458[2mms[22m[39m
+2026-11-04T22:35:55.0841309Z Error: socket hang up
+2026-11-04T22:35:55.0868041Z [90m    at Socket.socketCloseListener (node:_http_client:747:27)[39m
+2026-11-04T22:35:55.0894608Z [90m    at Socket.emit (node:events:526:24)[39m
+2026-11-04T22:35:55.0898671Z [90m    at TCP.<anonymous> (node:net:362:12)[39m {
+2026-11-04T22:35:55.0899726Z   code: [32m'ECONNRESET'[39m
+2026-11-04T22:35:55.0900401Z }
+2026-11-04T22:35:57.6629987Z  [32m✓[39m src/layouts/Details/Gantt/utils.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 25[2mms[22m[39m

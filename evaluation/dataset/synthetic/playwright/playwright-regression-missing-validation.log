@@ -1,0 +1,11 @@
+  1) [chromium] › signup.spec.ts:16:5 › rejects a weak password
+
+     Error: expected the password field to show a validation error, found none
+         at SignupPage.assertValidationShown (pages/signup-page.ts:19:7)
+         at async TestCase.run (signup.spec.ts:16:5)
+
+     This form accepted "1234" as a password on every run on this branch;
+     no network or timing evidence is present anywhere in this failure.
+
+  1 failed
+    [chromium] › signup.spec.ts:16:5 › rejects a weak password

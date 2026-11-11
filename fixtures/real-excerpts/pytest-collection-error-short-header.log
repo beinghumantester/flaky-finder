@@ -1,0 +1,19 @@
+2026-11-03T16:54:40.9420105Z collected 5 items / 1 error
+2026-11-03T16:54:40.9420326Z 
+2026-11-03T16:54:40.9420528Z ==================================== ERRORS ====================================
+2026-11-03T16:54:40.9421491Z [31m[1m_ ERROR collecting .tox/doctesting-coverage/lib/python3.10/site-packages/_pytest/_code/_rich.py _[0m
+2026-11-03T16:54:40.9422804Z [31mImportError while importing test module '/home/runner/work/pytest/pytest/.tox/doctesting-coverage/lib/python3.10/site-packages/_pytest/_code/_rich.py'.
+2026-11-03T16:54:40.9423694Z Hint: make sure your test modules/packages have valid Python names.
+2026-11-03T16:54:40.9424533Z Traceback:
+2026-11-03T16:54:40.9425000Z /opt/hostedtoolcache/Python/3.10.22/x64/lib/python3.10/importlib/__init__.py:126: in import_module
+2026-11-03T16:54:40.9425644Z     return _bootstrap._gcd_import(name[level:], package, level)
+2026-11-03T16:54:40.9426349Z E   ModuleNotFoundError: No module named 'rich'[0m
+2026-11-03T16:54:40.9426858Z -------- generated xml file: /home/runner/work/pytest/pytest/junit.xml ---------
+2026-11-03T16:54:40.9427501Z [36m[1m=========================== short test summary info ============================[0m
+2026-11-03T16:54:40.9428200Z [31mERROR[0m .tox/doctesting-coverage/lib/python3.10/site-packages/_pytest/_code/_rich.py
+2026-11-03T16:54:40.9428812Z !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+2026-11-03T16:54:40.9429458Z [31m=============================== [31m[1m1 error[0m[31m in 0.70s[0m[31m ===============================[0m
+2026-11-03T16:54:41.0648897Z doctesting-coverage: exit 2 (1.25 seconds) /home/runner/work/pytest/pytest> coverage run -m pytest --doctest-modules --junitxml=junit.xml --pyargs _pytest pid=2837
+2026-11-03T16:54:41.0673712Z   doctesting-coverage: FAIL code 2 (17.42=setup[6.13]+cmd[10.05,1.25] seconds)
+2026-11-03T16:54:41.0674747Z   evaluation failed :( (17.56 seconds)
+2026-11-03T16:54:41.1103130Z ##[error]Process completed with exit code 2.

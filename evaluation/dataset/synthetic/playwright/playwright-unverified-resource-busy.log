@@ -1,0 +1,8 @@
+  1) [chromium] › export.spec.ts:15:5 › triggers an export job
+
+     AppError: operation rejected (code: RESOURCE_BUSY)
+         at ExportPage.trigger (pages/export-page.ts:12:5)
+         at async TestCase.run (export.spec.ts:15:5)
+
+  1 failed
+    [chromium] › export.spec.ts:15:5 › triggers an export job

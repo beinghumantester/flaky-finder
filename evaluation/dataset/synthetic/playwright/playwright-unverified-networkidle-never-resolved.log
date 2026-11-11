@@ -1,0 +1,8 @@
+  1) [chromium] › analytics.spec.ts:11:5 › dashboard finishes loading
+
+     Error: page.waitForLoadState: networkidle wait never resolved
+         at DashboardPage.waitUntilSettled (pages/dashboard-page.ts:17:5)
+         at async TestCase.run (analytics.spec.ts:11:5)
+
+  1 failed
+    [chromium] › analytics.spec.ts:11:5 › dashboard finishes loading

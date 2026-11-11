@@ -1,0 +1,8 @@
+2026-11-04T19:45:49.3592965Z [0m[7m[1m[32m PASS [39m[22m[27m[0m [0m[7m[37m Core admin [39m[27m[0m [2madmin/src/components/GuidedTour/tests/[22m[1mmigrations.test.ts[22m
+2026-11-04T19:45:49.3595315Z [0m[7m[1m[32m PASS [39m[22m[27m[0m [0m[7m[37m Core admin [39m[27m[0m [2madmin/src/components/tests/[22m[1mContext.test.tsx[22m
+2026-11-04T19:45:49.3596267Z   [1m● [22mConsole
+2026-11-04T19:45:49.3596702Z 
+2026-11-04T19:45:49.3597294Z     [2m[31mconsole.error[39m[22m
+2026-11-04T19:45:49.3598500Z [31m      Error: Uncaught [Error: `Consumer` must be used within `TestContext`][39m
+2026-11-04T19:45:49.3600648Z [31m          at reportException (/home/runner/work/strapi/strapi/node_modules/jsdom/lib/jsdom/living/helpers/runtime-script-errors.js:66:24)[39m
+2026-11-04T19:45:49.3602148Z [31m          at innerInvokeEventListeners (/home/runner/work/strapi/strapi/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:353:9)[39m

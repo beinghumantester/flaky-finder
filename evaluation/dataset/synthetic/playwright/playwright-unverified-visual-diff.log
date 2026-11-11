@@ -1,0 +1,7 @@
+  1) [chromium] › visual.spec.ts:8:5 › product card matches baseline
+
+     Screenshot comparison failed: 2.3% pixel difference exceeds the 1% threshold
+         at expect(page).toHaveScreenshot (visual.spec.ts:8:5)
+
+  1 failed
+    [chromium] › visual.spec.ts:8:5 › product card matches baseline

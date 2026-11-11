@@ -1,0 +1,12 @@
+ FAIL  src/lib/__tests__/sort-results.test.ts
+  ● sortResults › orders items by price ascending
+
+    expect(received).toEqual(expected)
+
+    Expected: [10, 25, 40]
+    Received: [10, 40, 25]
+
+      6 |   const sorted = sortResults(items, 'price');
+    > 7 |   expect(sorted.map(i => i.price)).toEqual([10, 25, 40]);
+
+      at Object.<anonymous> (src/lib/__tests__/sort-results.test.ts:7:36)

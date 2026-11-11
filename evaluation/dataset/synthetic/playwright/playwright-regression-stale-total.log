@@ -1,0 +1,12 @@
+  1) [chromium] › cart.spec.ts:33:5 › updates the total when quantity changes
+
+     Error: expected cart total to read "$60.00", found "$40.00"
+         at CartPage.assertTotal (pages/cart-page.ts:27:7)
+         at async TestCase.run (cart.spec.ts:33:5)
+
+     The total shown never updates after the quantity stepper is clicked;
+     this reproduces identically on every run, with no infrastructure or
+     timing evidence anywhere in the failure.
+
+  1 failed
+    [chromium] › cart.spec.ts:33:5 › updates the total when quantity changes

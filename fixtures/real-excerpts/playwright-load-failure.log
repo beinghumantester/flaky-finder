@@ -1,0 +1,20 @@
+2026-11-04T14:54:18.0698415Z TypeError: utils.asyncCurry is not a function
+2026-11-04T14:54:18.0698793Z 
+2026-11-04T14:54:18.0699131Z    at ../../../../packages/core/utils/src/validate/validators.ts:46
+2026-11-04T14:54:18.0699535Z 
+2026-11-04T14:54:18.0699668Z   44 | ];
+2026-11-04T14:54:18.0699933Z   45 |
+2026-11-04T14:54:18.0700340Z > 46 | export const validateFilters = asyncCurry(
+2026-11-04T14:54:18.0700877Z      |                                ^
+2026-11-04T14:54:18.0701711Z   47 |   async (ctx: Context, filters: unknown, include: (typeof FILTER_TRAVERSALS)[number][]) => {
+2026-11-04T14:54:18.0702781Z   48 |     // TODO: schema checks should check that it is a valid schema with yup
+2026-11-04T14:54:18.0703855Z   49 |     if (!ctx.schema) {
+2026-11-04T14:54:18.0704751Z     at Object.<anonymous> (/__w/strapi/strapi/packages/core/utils/src/validate/validators.ts:46:32)
+2026-11-04T14:54:18.0721448Z     at Object.<anonymous> (/__w/strapi/strapi/tests/e2e/tests/content-type-builder/single-type/edit-single-type.spec.ts:5:1)
+2026-11-04T14:54:18.0722315Z 
+2026-11-04T14:54:18.0722526Z Error: No tests found.
+2026-11-04T14:54:18.0723285Z Make sure that arguments are regular expressions matching test files.
+2026-11-04T14:54:18.0724510Z You may need to escape symbols like "$" or "*" and quote the arguments.
+2026-11-04T14:54:18.1264303Z 
+2026-11-04T14:54:18.1264718Z 
+2026-11-04T14:54:18.2119719Z content-type-builder e2e tests failed

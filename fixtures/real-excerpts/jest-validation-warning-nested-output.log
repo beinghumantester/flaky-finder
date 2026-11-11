@@ -1,0 +1,70 @@
+2026-11-03T12:08:42.9570280Z ##[group]Attempt 1
+2026-11-03T12:08:43.9404110Z [33m[1m[1m●[22m[1m Validation Warning[22m:[39m
+2026-11-03T12:08:43.9404660Z [33m[39m
+2026-11-03T12:08:43.9405380Z [33m  Option [1m"projects"[22m is not supported in an individual project configuration.[39m
+2026-11-03T12:08:43.9405910Z [33m  Move it to the root configuration.[39m
+2026-11-03T12:08:43.9406230Z [33m[39m
+2026-11-03T12:08:43.9406550Z [33m  [1mConfiguration Documentation:[22m[39m
+2026-11-03T12:08:43.9406970Z [33m  https://jestjs.io/docs/configuration[39m
+2026-11-03T12:08:43.9407220Z [33m[39m
+2026-11-03T12:08:43.9407580Z [33m[1m[1m●[22m[1m Validation Warning[22m:[39m
+2026-11-03T12:08:43.9407910Z [33m[39m
+2026-11-03T12:08:43.9408490Z [33m  Option [1m"watchPlugins"[22m is not supported in an individual project configuration.[39m
+2026-11-03T12:08:43.9409470Z [33m  Move it to the root configuration.[39m
+2026-11-03T12:08:43.9416470Z [33m[39m
+2026-11-03T12:08:43.9416840Z [33m  [1mConfiguration Documentation:[22m[39m
+2026-11-03T12:08:43.9417240Z [33m  https://jestjs.io/docs/configuration[39m
+2026-11-03T12:08:43.9417490Z [33m[39m
+2026-11-03T12:08:50.7578060Z ..........(node:1612) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+2026-11-03T12:09:40.3274090Z 
+2026-11-03T12:09:40.3274100Z 
+2026-11-03T12:09:40.3275340Z [1mSummary of all failing tests[22m
+2026-11-03T12:09:40.3276930Z [0m[7m[1m[31m FAIL [39m[22m[27m[0m [2me2e/__tests__/[22m[1mdetectLeaksSourceMaps.test.ts[22m
+2026-11-03T12:09:40.3278540Z [1m[31m  [1m● [22m[1mformatting a mapped stack does not retain the environment[39m[22m
+2026-11-03T12:09:40.3278880Z 
+2026-11-03T12:09:40.3279970Z     [2mexpect([22m[31mreceived[39m[2m).[22mtoMatch[2m([22m[32mexpected[39m[2m)[22m
+2026-11-03T12:09:40.3280340Z 
+2026-11-03T12:09:40.3281860Z     Expected pattern: [32m/PASS\s__tests__\/a.test.js/[39m
+2026-11-03T12:09:40.3282370Z     Received string:  [31m"FAIL __tests__/b.test.js[39m
+2026-11-03T12:09:40.3285060Z     [31m  ● Test suite failed to run·[39m
+2026-11-03T12:09:40.3286370Z     [31m    EXPERIMENTAL FEATURE![39m
+2026-11-03T12:09:40.3286930Z     [31m    Your test suite is leaking memory. Please ensure all references are cleaned.·[39m
+2026-11-03T12:09:40.3287960Z     [31m    There is a number of things that can leak memory:[39m
+2026-11-03T12:09:40.3288550Z     [31m      - Async operations that have not finished (e.g. fs.readFile).[39m
+2026-11-03T12:09:40.3289160Z     [31m      - Timers not properly mocked (e.g. setInterval, setTimeout).[39m
+2026-11-03T12:09:40.3289710Z     [31m      - Keeping references to the global scope.·[39m
+2026-11-03T12:09:40.3290540Z     [31m      at onResult (../../../../../../../Users/runner/work/jest/jest/packages/jest-core/build/index.js:1063:18)[39m
+2026-11-03T12:09:40.3291050Z     [31m          at Array.map (<anonymous>)·[39m
+2026-11-03T12:09:40.3291390Z     [31mFAIL __tests__/a.test.js[39m
+2026-11-03T12:09:40.3291800Z     [31m  ● Test suite failed to run·[39m
+2026-11-03T12:09:40.3297440Z     [31m    EXPERIMENTAL FEATURE![39m
+2026-11-03T12:09:40.3298110Z     [31m    Your test suite is leaking memory. Please ensure all references are cleaned.·[39m
+2026-11-03T12:09:40.3298730Z     [31m    There is a number of things that can leak memory:[39m
+2026-11-03T12:09:40.3299320Z     [31m      - Async operations that have not finished (e.g. fs.readFile).[39m
+2026-11-03T12:09:40.3299950Z     [31m      - Timers not properly mocked (e.g. setInterval, setTimeout).[39m
+2026-11-03T12:09:40.3300550Z     [31m      - Keeping references to the global scope.·[39m
+2026-11-03T12:09:40.3301510Z     [31m      at onResult (../../../../../../../Users/runner/work/jest/jest/packages/jest-core/build/index.js:1063:18)[39m
+2026-11-03T12:09:40.3302060Z     [31m          at Array.map (<anonymous>)·[39m
+2026-11-03T12:09:40.3302390Z     [31mTest Suites: 2 failed, 2 total[39m
+2026-11-03T12:09:40.3302680Z     [31mTests:       0 total[39m
+2026-11-03T12:09:40.3302950Z     [31mSnapshots:   0 total[39m
+2026-11-03T12:09:40.3303170Z     [31mTime:        2.071 s[39m
+2026-11-03T12:09:40.3303450Z     [31mRan all test suites."[39m
+2026-11-03T12:09:40.3303590Z 
+2026-11-03T12:09:40.3304080Z [2m    [0m [90m 48 |[39m   [90m// A leak is reported as a failed suite, so the exit code is what says the[39m[22m
+2026-11-03T12:09:40.3305310Z [2m     [90m 49 |[39m   [90m// environment was collectable.[39m[22m
+2026-11-03T12:09:40.3306640Z [2m    [31m[1m>[22m[2m[39m[90m 50 |[39m   expect(stderr)[33m.[39mtoMatch([35m/PASS\s__tests__\/a.test.js/[39m)[33m;[39m[22m
+2026-11-03T12:09:40.3307420Z [2m     [90m    |[39m                  [31m[1m^[22m[2m[39m[22m
+2026-11-03T12:09:40.3308300Z [2m     [90m 51 |[39m   expect(stderr)[33m.[39mtoMatch([35m/PASS\s__tests__\/b.test.js/[39m)[33m;[39m[22m
+2026-11-03T12:09:40.3308920Z [2m     [90m 52 |[39m   expect(exitCode)[33m.[39mtoBe([35m0[39m)[33m;[39m[22m
+2026-11-03T12:09:40.3309520Z [2m     [90m 53 |[39m })[33m;[39m[0m[22m
+2026-11-03T12:09:40.3309680Z 
+2026-11-03T12:09:40.3310200Z [2m      [2mat Object.toMatch ([22m[2m[0m[36me2e/__tests__/detectLeaksSourceMaps.test.ts[39m[0m[2m:50:18)[22m[2m[22m
+2026-11-03T12:09:40.3310550Z 
+2026-11-03T12:09:40.3310560Z 
+2026-11-03T12:09:40.3311030Z [1mTest Suites: [22m[1m[31m1 failed[39m[22m, [1m[33m1 skipped[39m[22m, [1m[32m136 passed[39m[22m, 137 of 138 total
+2026-11-03T12:09:40.3312010Z [1mTests:       [22m[1m[31m1 failed[39m[22m, [1m[33m37 skipped[39m[22m, [1m[32m2126 passed[39m[22m, 2164 total
+2026-11-03T12:09:40.3312670Z [1mSnapshots:   [22m[1m[32m994 passed[39m[22m, 994 total
+2026-11-03T12:09:40.3313080Z [1mTime:[22m        56.174 s
+2026-11-03T12:09:40.3313520Z [2mRan all test suites[22m[2m in [22m8[2m projects[22m[2m.[22m
+2026-11-03T12:09:51.1087150Z ##[warning]Attempt 1 failed. Reason: Child_process exited with error code 1

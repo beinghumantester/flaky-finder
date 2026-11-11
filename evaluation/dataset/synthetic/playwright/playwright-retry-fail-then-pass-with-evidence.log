@@ -1,0 +1,17 @@
+Flaky tests:
+
+  1) [chromium] › checkout.spec.ts:10:5 › completes checkout ══════════════
+
+     Retry #1 ───────────────────────────────────────────────────────────
+
+     Error: the request did not complete before the client gave up
+
+         at CheckoutPage.submit (pages/checkout-page.ts:21:5)
+         at async TestCase.run (checkout.spec.ts:10:5)
+
+     Runner telemetry for the original (failed) attempt: CPU 98% utilized
+     and two other browser-driven jobs active on this host at that moment.
+     The retry (attempt 2 of 2), run after those other jobs completed,
+     passed.
+
+  1 flaky

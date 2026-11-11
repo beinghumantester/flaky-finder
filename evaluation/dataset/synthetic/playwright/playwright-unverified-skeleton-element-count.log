@@ -1,0 +1,11 @@
+  1) [chromium] › catalog.spec.ts:19:5 › catalog shows three featured items
+
+     Error: expected 3 elements matching '.featured-card', found 2
+         at CatalogPage.assertFeaturedCount (pages/catalog-page.ts:24:7)
+         at async TestCase.run (catalog.spec.ts:19:5)
+
+     Screenshot at failure time shows one card still in its loading-skeleton
+     state; no further detail is available about why it hadn't resolved.
+
+  1 failed
+    [chromium] › catalog.spec.ts:19:5 › catalog shows three featured items

@@ -1,0 +1,8 @@
+  1) [chromium] › shard-coordinator.spec.ts:18:5 › replica handshake completes
+
+     FatalBridgeError: shard coordinator handshake failed (code 71, non-retryable)
+         at ShardBridge.connect (lib/shard-bridge.ts:112:11)
+         at async TestCase.run (shard-coordinator.spec.ts:18:5)
+
+  1 failed
+    [chromium] › shard-coordinator.spec.ts:18:5 › replica handshake completes

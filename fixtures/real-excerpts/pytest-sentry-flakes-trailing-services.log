@@ -1,0 +1,34 @@
+2026-11-05T00:19:04.8133499Z tests/apidocs/test_response_coverage.py [33mR[0m[33mR[0m[33mR[0m[33mR[0m[33mR[0m[31mF[0m[31m                           [100%][0m
+2026-11-05T00:19:04.8134041Z 
+2026-11-05T00:19:04.8134705Z =================================== FAILURES ===================================
+2026-11-05T00:19:04.8135393Z [31m[1m_________________ test_response_fields_are_described_and_typed _________________[0m
+2026-11-05T00:19:04.8136174Z [1m[31mtests/apidocs/test_response_coverage.py[0m:40: in test_response_fields_are_described_and_typed
+2026-11-05T00:19:04.8137098Z     [0m[94massert[39;49;00m [95mnot[39;49;00m problems, [33m"[39;49;00m[33m\n[39;49;00m[33m\n[39;49;00m[33m"[39;49;00m.join(problems)[90m[39;49;00m
+2026-11-05T00:19:04.8138961Z [1m[31mE   AssertionError: 1 response fields need a description or a type. Describe a TypedDict field with `Annotated[T, ApiDescription("...")]` and a serializer field with `help_text`. Replace `Any` and `dict[str, Any]` with a TypedDict or a concrete type. See src/sentry/apidocs/README.md#response-fields.[0m
+2026-11-05T00:19:04.8140930Z [1m[31mE       missing-description sentry.workflow_engine.endpoints.serializers.workflow_serializer.WorkflowSerializerResponse.type[0m
+2026-11-05T00:19:04.8142727Z [1m[31mE   assert not ['1 response fields need a description or a type. Describe a TypedDict field with `Annotated[T, ApiDescription("...")]... missing-description sentry.workflow_engine.endpoints.serializers.workflow_serializer.WorkflowSerializerResponse.type'][0m
+2026-11-05T00:19:04.8143870Z =========================== FLAKES (original error) ============================
+2026-11-05T00:19:04.8144473Z [31m[1m_________________ test_response_fields_are_described_and_typed _________________[0m
+2026-11-05T00:19:04.8145235Z [1m[31mtests/apidocs/test_response_coverage.py[0m:40: in test_response_fields_are_described_and_typed
+2026-11-05T00:19:04.8146150Z     [0m[94massert[39;49;00m [95mnot[39;49;00m problems, [33m"[39;49;00m[33m\n[39;49;00m[33m\n[39;49;00m[33m"[39;49;00m.join(problems)[90m[39;49;00m
+2026-11-05T00:19:04.8148428Z [1m[31mE   AssertionError: 1 response fields need a description or a type. Describe a TypedDict field with `Annotated[T, ApiDescription("...")]` and a serializer field with `help_text`. Replace `Any` and `dict[str, Any]` with a TypedDict or a concrete type. See src/sentry/apidocs/README.md#response-fields.[0m
+2026-11-05T00:19:04.8150215Z [1m[31mE       missing-description sentry.workflow_engine.endpoints.serializers.workflow_serializer.WorkflowSerializerResponse.type[0m
+2026-11-05T00:19:04.8152053Z [1m[31mE   assert not ['1 response fields need a description or a type. Describe a TypedDict field with `Annotated[T, ApiDescription("...")]... missing-description sentry.workflow_engine.endpoints.serializers.workflow_serializer.WorkflowSerializerResponse.type'][0m
+2026-11-05T00:19:04.8153183Z ============================= slowest 10 durations =============================
+2026-11-05T00:19:04.8153948Z 6.79s setup    tests/apidocs/endpoints/events/test_event_attachment_details.py::ProjectEventAttachmentDetailsDocs::test_get
+2026-11-05T00:19:04.8154897Z 3.81s call     tests/apidocs/endpoints/events/test_event_attachment_details.py::ProjectEventAttachmentDetailsDocs::test_get
+2026-11-05T00:19:04.8155920Z 1.17s call     tests/apidocs/endpoints/projects/test_user_feedback.py::ProjectUserFeedbackDocs::test_post
+2026-11-05T00:19:04.8156771Z 0.93s call     tests/apidocs/endpoints/events/test_group_issue_details.py::ProjectGroupIssueDetailsDocs::test_get
+2026-11-05T00:19:04.8157617Z 0.79s call     tests/apidocs/endpoints/events/test_group_issue_details.py::ProjectGroupIssueDetailsDocs::test_put
+2026-11-05T00:19:04.8158539Z 0.77s call     tests/apidocs/endpoints/events/test_group_events.py::ProjectGroupEventDetailsDocs::test_get_collapse_adjacent_events
+2026-11-05T00:19:04.8159417Z 0.76s call     tests/apidocs/endpoints/events/test_group_events.py::ProjectGroupEventDetailsDocs::test_get
+2026-11-05T00:19:04.8160407Z 0.73s call     tests/apidocs/endpoints/events/test_project_event_details.py::ProjectEventDetailsDocs::test_get
+2026-11-05T00:19:04.8161574Z 0.72s call     tests/apidocs/endpoints/events/test_project_event_details.py::ProjectEventDetailsDocs::test_get_collapse_adjacent_events
+2026-11-05T00:19:04.8162493Z 0.69s call     tests/apidocs/endpoints/releases/test_project_releases.py::ProjectReleasesDocsTest::test_get
+2026-11-05T00:19:04.8163275Z [36m[1m=========================== short test summary info ============================[0m
+2026-11-05T00:19:04.8168233Z [31mFAILED[0m tests/apidocs/test_response_coverage.py::[1mtest_response_fields_are_described_and_typed[0m - AssertionError: 1 response fields need a description or a type. Describe a TypedDict field with `Annotated[T, ApiDescription("...")]` and a serializer field with `help_text`. Replace `Any` and `dict[str, Any]` with a TypedDict or a concrete type. See src/sentry/apidocs/README.md#response-fields.
+2026-11-05T00:19:04.8170184Z     missing-description sentry.workflow_engine.endpoints.serializers.workflow_serializer.WorkflowSerializerResponse.type
+2026-11-05T00:19:04.8171737Z assert not ['1 response fields need a description or a type. Describe a TypedDict field with `Annotated[T, ApiDescription("...")]... missing-description sentry.workflow_engine.endpoints.serializers.workflow_serializer.WorkflowSerializerResponse.type']
+2026-11-05T00:19:04.8173187Z [31m=================== [31m[1m1 failed[0m, [32m148 passed[0m, [33m5 rerun[0m[31m in 55.01s[0m[31m ====================[0m
+2026-11-05T00:19:06.6832540Z ##[error]Process completed with exit code 1.
+2026-11-05T00:19:07.7767251Z postgres-1  | 2026-11-05T00:18:47.527369138Z 2026-11-05 00:18:47.527 UTC [277] ERROR:  duplicate key value violates unique constraint "example_unique_constraint"

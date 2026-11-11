@@ -1,0 +1,72 @@
+2026-11-05T02:17:20.2560674Z [36;1m  case "$rc" in[0m
+2026-11-05T02:17:20.2561068Z [36;1m    124) echo "::error::pnpm install timed out after 600s (exit 124)" ;;[0m
+2026-11-05T02:17:20.2561728Z [36;1m    137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;[0m
+2026-11-05T02:17:20.2562256Z [36;1m  esac[0m
+2026-11-05T02:30:12.8215759Z ================================================================
+2026-11-05T02:30:12.8215934Z 
+2026-11-05T02:30:13.9669102Z 
+2026-11-05T02:30:13.9677459Z 
+2026-11-05T02:30:13.9690141Z   1) [sqlite:e2e] › tests/e2e/instance-ai/instance-ai-background-lifecycle.spec.ts:13:7 › Instance AI background lifecycle › should recover when a background builder task is cancelled 
+2026-11-05T02:30:13.9690696Z 
+2026-11-05T02:30:13.9691049Z     Error: expect(locator).toContainText(expected) failed
+2026-11-05T02:30:13.9691366Z 
+2026-11-05T02:30:13.9691674Z     Locator: getByTestId('instance-ai-container').getByTestId('instance-ai-assistant-message').first()
+2026-11-05T02:30:13.9692152Z     Expected substring: "I started a background workflow-builder task."
+2026-11-05T02:30:13.9692468Z     Timeout: 15000ms
+2026-11-05T02:30:13.9692719Z     Error: element(s) not found
+2026-11-05T02:30:13.9692897Z 
+2026-11-05T02:30:13.9693035Z     Call log:
+2026-11-05T02:30:13.9693984Z       - Expect "toContainText" with timeout 15000ms
+2026-11-05T02:30:13.9694551Z       - waiting for getByTestId('instance-ai-container').getByTestId('instance-ai-assistant-message').first()
+2026-11-05T02:30:13.9694860Z 
+2026-11-05T02:30:13.9705896Z         pnpm exec playwright show-trace test-results/instance-ai-instance-ai-ba-1e795-d-builder-task-is-cancelled-sqlite-e2e/trace.zip
+2026-11-05T02:30:13.9706359Z 
+2026-11-05T02:30:13.9706640Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-11-05T02:30:13.9706959Z 
+2026-11-05T02:30:13.9707251Z     Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+2026-11-05T02:30:13.9707567Z 
+2026-11-05T02:30:13.9707849Z     Error: expect(locator).toContainText(expected) failed
+2026-11-05T02:30:13.9708136Z 
+2026-11-05T02:30:13.9708732Z     Locator: getByTestId('instance-ai-container').getByTestId('instance-ai-assistant-message').first()
+2026-11-05T02:30:13.9709334Z     Expected substring: "I started a background workflow-builder task."
+2026-11-05T02:30:13.9709640Z     Timeout: 15000ms
+2026-11-05T02:30:13.9709878Z     Error: element(s) not found
+2026-11-05T02:30:13.9710051Z 
+2026-11-05T02:30:13.9723237Z         pnpm exec playwright show-trace test-results/instance-ai-instance-ai-ba-1e795-d-builder-task-is-cancelled-sqlite-e2e-retry1/trace.zip
+2026-11-05T02:30:13.9723710Z 
+2026-11-05T02:30:13.9723996Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-11-05T02:30:13.9724314Z 
+2026-11-05T02:30:13.9724592Z     Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+2026-11-05T02:30:13.9724901Z 
+2026-11-05T02:30:13.9725084Z     Error: expect(locator).toContainText(expected) failed
+2026-11-05T02:30:13.9725373Z 
+2026-11-05T02:30:13.9725642Z     Locator: getByTestId('instance-ai-container').getByTestId('instance-ai-assistant-message').first()
+2026-11-05T02:30:13.9726161Z     Expected substring: "I started a background workflow-builder task."
+2026-11-05T02:30:13.9726460Z     Timeout: 15000ms
+2026-11-05T02:30:13.9726701Z     Error: element(s) not found
+2026-11-05T02:30:13.9743788Z     Usage:
+2026-11-05T02:30:13.9743944Z 
+2026-11-05T02:30:13.9744321Z         pnpm exec playwright show-trace test-results/instance-ai-instance-ai-ba-1e795-d-builder-task-is-cancelled-sqlite-e2e-retry2/trace.zip
+2026-11-05T02:30:13.9744701Z 
+2026-11-05T02:30:13.9744979Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-11-05T02:30:13.9745220Z 
+2026-11-05T02:30:13.9745725Z   2) [sqlite:e2e] › tests/e2e/instance-ai/instance-ai-onboarding.spec.ts:34:7 › n8n Assistant self-hosted onboarding @db:reset › should keep the search step open when verification fails 
+2026-11-05T02:30:13.9746148Z 
+2026-11-05T02:30:13.9746319Z     Error: expect(locator).toBeVisible() failed
+2026-11-05T02:30:13.9746524Z 
+2026-11-05T02:30:13.9747092Z     Locator: getByTestId('instance-ai-container').getByTestId('assistant-setup-intro').or(getByTestId('instance-ai-container').getByTestId('assistant-setup-incomplete'))
+2026-11-05T02:30:13.9747640Z     Expected: visible
+2026-11-05T02:30:13.9747882Z     Timeout: 30000ms
+2026-11-05T02:30:13.9748280Z     Error: element(s) not found
+2026-11-05T02:30:13.9748526Z 
+2026-11-05T02:30:13.9772863Z         pnpm exec playwright show-trace test-results/instance-ai-instance-ai-on-efc37-pen-when-verification-fails-sqlite-e2e/trace.zip
+2026-11-05T02:30:13.9773216Z 
+2026-11-05T02:30:13.9773758Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-11-05T02:30:13.9774066Z 
+2026-11-05T02:30:13.9774181Z   1 failed
+2026-11-05T02:30:13.9774760Z     [sqlite:e2e] › tests/e2e/instance-ai/instance-ai-background-lifecycle.spec.ts:13:7 › Instance AI background lifecycle › should recover when a background builder task is cancelled 
+2026-11-05T02:30:13.9775239Z   1 flaky
+2026-11-05T02:30:13.9775805Z     [sqlite:e2e] › tests/e2e/instance-ai/instance-ai-onboarding.spec.ts:34:7 › n8n Assistant self-hosted onboarding @db:reset › should keep the search step open when verification fails 
+2026-11-05T02:30:13.9776450Z   11 skipped
+2026-11-05T02:30:13.9776672Z   44 passed (12.2m)
+2026-11-05T02:30:16.3734239Z Safe-chain: error connecting to example.invalid:443 - read ECONNRESET

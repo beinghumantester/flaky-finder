@@ -1,0 +1,10 @@
+============================= FAILURES ==============================
+_______________________ test_display_price_in_cents_as_dollars _______________________
+
+    def test_display_price_in_cents_as_dollars():
+>       assert format_price(1050) == "$10.50"
+E       assert '$10.49' == '$10.50'
+
+tests/test_price_display.py:8: AssertionError
+======================= short test summary info ======================
+FAILED tests/test_price_display.py::test_display_price_in_cents_as_dollars - assert '$10.49' == '$10.50'

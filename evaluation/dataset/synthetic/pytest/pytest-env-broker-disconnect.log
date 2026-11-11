@@ -1,0 +1,14 @@
+============================= FAILURES ==============================
+_______________________ test_consume_order_events _______________________
+
+    def test_consume_order_events():
+        consumer = OrderEventConsumer()
+>       consumer.poll(timeout=5)
+E       BrokerError: the broker connection was dropped mid-poll
+
+    Three other consumers on this same host reported an identical broker
+    disconnect within the same two-second window (see ops channel #broker-health).
+
+tests/test_consumer.py:61: BrokerError
+======================= short test summary info ======================
+FAILED tests/test_consumer.py::test_consume_order_events - BrokerError

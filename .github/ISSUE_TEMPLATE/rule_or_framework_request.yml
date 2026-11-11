@@ -1,0 +1,27 @@
+name: New rule or framework
+description: Propose a new failure signature or a new test framework parser
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What are you proposing?
+      options:
+        - New failure-signature rule
+        - New framework parser
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: signature
+    attributes:
+      label: Signature or sample log
+      description: The exact text this should match, or a representative failure log.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: limits
+    attributes:
+      label: What would this NOT establish?
+      description: For example, "a timeout here can also come from a real regression".

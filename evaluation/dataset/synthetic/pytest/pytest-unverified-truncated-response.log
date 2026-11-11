@@ -1,0 +1,14 @@
+============================= FAILURES ==============================
+_______________________ test_fetch_user_profile _______________________
+
+    def test_fetch_user_profile():
+        resp = client.get("/profile/42")
+>       data = resp.json()
+E       json.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 118 (char 117)
+
+    The response body was 2048 bytes but only 117 characters of valid JSON
+    were present before it stopped; no error was logged on the server side.
+
+tests/test_profile.py:16: JSONDecodeError
+======================= short test summary info ======================
+FAILED tests/test_profile.py::test_fetch_user_profile - json.decoder.JSONDecodeError

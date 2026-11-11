@@ -1,0 +1,45 @@
+2026-11-05T00:42:21.0079903Z [1m========================================================================================== test session starts ===========================================================================================[0m
+2026-11-05T00:42:21.1502243Z ================================================================================================ FAILURES ================================================================================================
+2026-11-05T00:42:21.1502790Z [31m[1m______________________________________________________________________________ TestModalTask.test_return_value_reaches_xcom ______________________________________________________________________________[0m
+2026-11-05T00:42:21.1503134Z [1m[31mproviders/modal/tests/unit/modal/decorators/test_modal.py[0m:86: in test_return_value_reaches_xcom
+2026-11-05T00:42:21.1503450Z     [0m[94massert[39;49;00m run_task.state == TaskInstanceState.SUCCESS, run_task.error[90m[39;49;00m
+2026-11-05T00:42:21.1503792Z [1m[31mE   AssertionError: AttributeError("'_ModalDecoratedOperator' object has no attribute 'xcom_push'")[0m
+2026-11-05T00:42:21.1503924Z [1m[31mE   assert equals failed[0m
+2026-11-05T00:42:21.1504215Z [1m[31mE     [m[1;31m<TaskInstanceState.FAILED: 'failed'>[m    [1;32m<TaskInstanceState.SUCCESS: 'success'>[m[0m
+2026-11-05T00:42:21.1504481Z ------------------------------------------------------------------------------------------ Captured stdout call ------------------------------------------------------------------------------------------
+2026-11-05T00:42:21.1615065Z ------------------------------------------------------------------------------------------- Captured log call --------------------------------------------------------------------------------------------
+2026-11-05T00:42:21.1615613Z [32mINFO    [0m airflow.providers.informatica.plugins.listener:listener.py:149 Pre-resolution complete for task summarize: 0 inlet(s), 0 outlet(s) resolved
+2026-11-05T00:42:21.1616195Z [32mINFO    [0m airflow.task.operators.airflow.providers.modal.decorators.modal._ModalDecoratedOperator:modal.py:154 Started Modal sandbox sb-local in app 'airflow'.
+2026-11-05T00:42:21.1616802Z [31m[1m_____________________________________________________________________ TestModalTask.test_multiple_outputs_unrolls_the_returned_dict ______________________________________________________________________[0m
+2026-11-05T00:42:21.1617214Z [1m[31mproviders/modal/tests/unit/modal/decorators/test_modal.py[0m:100: in test_multiple_outputs_unrolls_the_returned_dict
+2026-11-05T00:42:21.1617591Z     [0m[94massert[39;49;00m run_task.state == TaskInstanceState.SUCCESS, run_task.error[90m[39;49;00m
+2026-11-05T00:42:21.1617955Z [1m[31mE   AssertionError: AttributeError("'_ModalDecoratedOperator' object has no attribute 'xcom_push'")[0m
+2026-11-05T00:42:21.1618088Z [1m[31mE   assert equals failed[0m
+2026-11-05T00:42:21.1618453Z [1m[31mE     [m[1;31m<TaskInstanceState.FAILED: 'failed'>[m    [1;32m<TaskInstanceState.SUCCESS: 'success'>[m[0m
+2026-11-05T00:42:21.1642041Z [31m│[0m [33m│[0m                  [33m'xcom_push'"[0m[1m)[0m                                                               [33m│[0m [31m│[0m
+2026-11-05T00:42:21.1642359Z [31m│[0m [33m│[0m     early_exit = [94mNone[0m                                                                        [33m│[0m [31m│[0m
+2026-11-05T00:42:21.1642672Z [31m│[0m [33m│[0m          error = [94mNone[0m                                                                        [33m│[0m [31m│[0m
+2026-11-05T00:42:21.1861119Z ========================================================================================= slowest 100 durations ==========================================================================================
+2026-11-05T00:42:21.1911084Z [31m=========================================================== [31m[1m3 failed[0m, [32m18819 passed[0m, [33m1269 skipped[0m, [33m1 xfailed[0m, [33m2 warnings[0m[31m in 1018.95s (0:16:58)[0m[31m ============================================================[0m
+2026-11-05T00:42:21.1914935Z ================================================================================================ FAILURES ================================================================================================
+2026-11-05T00:42:21.1915295Z [31m[1m______________________________________________________________________________ TestModalTask.test_return_value_reaches_xcom ______________________________________________________________________________[0m
+2026-11-05T00:42:21.1915642Z [1m[31mproviders/modal/tests/unit/modal/decorators/test_modal.py[0m:86: in test_return_value_reaches_xcom
+2026-11-05T00:42:21.1915962Z     [0m[94massert[39;49;00m run_task.state == TaskInstanceState.SUCCESS, run_task.error[90m[39;49;00m
+2026-11-05T00:42:21.1916330Z [1m[31mE   AssertionError: AttributeError("'_ModalDecoratedOperator' object has no attribute 'xcom_push'")[0m
+2026-11-05T00:42:21.1916455Z [1m[31mE   assert equals failed[0m
+2026-11-05T00:42:21.1916801Z [1m[31mE     [m[1;31m<TaskInstanceState.FAILED: 'failed'>[m    [1;32m<TaskInstanceState.SUCCESS: 'success'>[m[0m
+2026-11-05T00:42:21.1917198Z ------------------------------------------------------------------------------------------ Captured stdout call ------------------------------------------------------------------------------------------
+2026-11-05T00:42:21.2014442Z ------------------------------------------------------------------------------------------- Captured log call --------------------------------------------------------------------------------------------
+2026-11-05T00:42:21.2014786Z [32mINFO    [0m airflow.providers.informatica.plugins.listener:listener.py:149 Pre-resolution complete for task summarize: 0 inlet(s), 0 outlet(s) resolved
+2026-11-05T00:42:21.2015159Z [32mINFO    [0m airflow.task.operators.airflow.providers.modal.decorators.modal._ModalDecoratedOperator:modal.py:154 Started Modal sandbox sb-local in app 'airflow'.
+2026-11-05T00:42:21.2015519Z [31m[1m_____________________________________________________________________ TestModalTask.test_multiple_outputs_unrolls_the_returned_dict ______________________________________________________________________[0m
+2026-11-05T00:42:21.2015775Z [1m[31mproviders/modal/tests/unit/modal/decorators/test_modal.py[0m:100: in test_multiple_outputs_unrolls_the_returned_dict
+2026-11-05T00:42:21.2015985Z     [0m[94massert[39;49;00m run_task.state == TaskInstanceState.SUCCESS, run_task.error[90m[39;49;00m
+2026-11-05T00:42:21.2016212Z [1m[31mE   AssertionError: AttributeError("'_ModalDecoratedOperator' object has no attribute 'xcom_push'")[0m
+2026-11-05T00:42:21.2016297Z [1m[31mE   assert equals failed[0m
+2026-11-05T00:42:21.2016556Z [1m[31mE     [m[1;31m<TaskInstanceState.FAILED: 'failed'>[m    [1;32m<TaskInstanceState.SUCCESS: 'success'>[m[0m
+2026-11-05T00:42:21.2031979Z [31m│[0m [33m│[0m                  [33m'xcom_push'"[0m[1m)[0m                                                               [33m│[0m [31m│[0m
+﻿2026-11-05T00:42:21.2037847Z [31m│[0m [33m│[0m     early_exit = [94mNone[0m                                                                        [33m│[0m [31m│[0m
+2026-11-05T00:42:21.2038050Z [31m│[0m [33m│[0m          error = [94mNone[0m                                                                        [33m│[0m [31m│[0m
+2026-11-05T00:42:21.2181697Z ========================================================================================= slowest 100 durations ==========================================================================================
+2026-11-05T00:42:21.2212565Z [31m=========================================================== [31m[1m3 failed[0m, [32m18819 passed[0m, [33m1269 skipped[0m, [33m1 xfailed[0m, [33m2 warnings[0m[31m in 1018.95s (0:16:58)[0m[31m ============================================================[0m

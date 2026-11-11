@@ -1,0 +1,10 @@
+2026-11-05T00:29:26.2356638Z [36;1m    echo "mem_mb=$(free -m 2>/dev/null | tr '\n' ' ' || echo 'free unavailable')"[0m
+2026-11-05T00:29:26.2356995Z [36;1m    echo "disk=$(df -h "$PWD" 2>/dev/null | tail -1)"[0m
+2026-11-05T00:29:26.2357362Z [36;1m    echo "oom=$(dmesg 2>/dev/null | grep -iE 'killed process|out of memory' | tail -5 || true)"[0m
+2026-11-05T00:29:26.2357715Z [36;1m  } > "$PNPM_DIAG_DIR/environment.txt" 2>&1[0m
+2026-11-05T00:29:26.2375408Z [36;1m  case "$rc" in[0m
+2026-11-05T00:29:26.2375620Z [36;1m    124) echo "::error::pnpm install timed out after 600s (exit 124)" ;;[0m
+2026-11-05T00:29:26.2375976Z [36;1m    137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;[0m
+2026-11-05T00:29:26.2376239Z [36;1m  esac[0m
+2026-11-05T00:29:26.2376368Z [36;1mfi[0m
+2026-11-05T00:29:26.2376496Z [36;1mexit "$rc"[0m

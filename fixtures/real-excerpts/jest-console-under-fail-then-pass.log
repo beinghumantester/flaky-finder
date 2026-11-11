@@ -1,0 +1,54 @@
+2026-11-04T22:41:17.3621239Z PASS public/app/features/alerting/unified/settings/import/RevertConfirmModal.test.tsx
+2026-11-04T22:41:17.6160109Z FAIL public/app/api/clients/folder/v1beta1/index.test.ts
+2026-11-04T22:41:17.6323215Z   ● Console
+2026-11-04T22:41:17.6323542Z 
+2026-11-04T22:41:17.6323773Z     console.warn
+2026-11-04T22:41:17.6324849Z       ImmutableStateInvariantMiddleware took 51ms, which is more than the warning threshold of 32ms. 
+2026-11-04T22:41:17.6327032Z       If your state or actions are very large, you may want to disable the middleware as it might cause too much of a slowdown in development mode. See https://redux-toolkit.js.org/api/getDefaultMiddleware for instructions.
+2026-11-04T22:41:17.6329071Z       It is disabled in production builds, so you don't need to worry about that.
+2026-11-04T22:41:17.6329577Z 
+2026-11-04T22:41:17.6331185Z     [0m [90m 44 |[39m     [36mconst[39m subscription [33m=[39m store[33m.[39mdispatch(folderAPIv1beta1[33m.[39mendpoints[33m.[39mgetFolder[33m.[39minitiate(folderQueryArg))[33m;[39m
+2026-11-04T22:41:17.6332696Z      [90m 45 |[39m     [36mawait[39m subscription[33m;[39m
+2026-11-04T22:41:17.6372851Z 
+2026-11-04T22:41:17.6374038Z   ● folderAPIv1beta1 cache invalidation › does not refetch an active getFolder subscription after deleting that folder
+2026-11-04T22:41:17.6374728Z 
+2026-11-04T22:41:17.6375187Z     Expected test not to call [1mconsole.warn()[22m.
+2026-11-04T22:41:17.6375520Z 
+2026-11-04T22:41:17.6376632Z     If the warn is expected, test for it explicitly by mocking it out using [1mjest.spyOn[22m(console, 'warn').mockImplementation() and test that the warning occurs.
+2026-11-04T22:41:17.6377356Z 
+2026-11-04T22:41:17.6378199Z     [31mImmutableStateInvariantMiddleware took 51ms, which is more than the warning threshold of 32ms. 
+2026-11-04T22:41:17.6380703Z     If your state or actions are very large, you may want to disable the middleware as it might cause too much of a slowdown in development mode. See https://redux-toolkit.js.org/api/getDefaultMiddleware for instructions.
+2026-11-04T22:41:17.6382548Z     It is disabled in production builds, so you don't need to worry about that.[39m
+2026-11-04T22:41:17.6384575Z     [90m    at console.captureMessage [as warn] (/home/runner/work/grafana/grafana/node_modules/.pnpm/jest-fail-on-console@3.3.1/node_modules/jest-fail-on-console/index.js:83:25)[39m
+2026-11-04T22:41:17.6445666Z     [37m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+2026-11-04T22:41:17.6446176Z 
+2026-11-04T22:41:17.6447091Z       at flushUnexpectedConsoleCalls (node_modules/.pnpm/jest-fail-on-console@3.3.1/node_modules/jest-fail-on-console/index.js:48:13)
+2026-11-04T22:41:17.6447751Z 
+2026-11-04T22:41:17.9805600Z PASS public/app/features/alerting/unified/utils/url.test.ts
+2026-11-04T22:41:18.2857980Z PASS packages/grafana-ui/src/components/DataLinks/DataLinkEditor.test.tsx
+2026-11-04T22:41:18.3427123Z PASS public/app/features/browse-dashboards/components/BrowseActions/utils.test.ts
+2026-11-04T22:41:57.3017569Z 
+2026-11-04T22:41:57.3018693Z Summary of all failing tests
+2026-11-04T22:41:57.3029207Z FAIL public/app/api/clients/folder/v1beta1/index.test.ts
+2026-11-04T22:41:57.3030803Z   ● folderAPIv1beta1 cache invalidation › does not refetch an active getFolder subscription after deleting that folder
+2026-11-04T22:41:57.3031485Z 
+2026-11-04T22:41:57.3031924Z     Expected test not to call [1mconsole.warn()[22m.
+2026-11-04T22:41:57.3032303Z 
+2026-11-04T22:41:57.3033463Z     If the warn is expected, test for it explicitly by mocking it out using [1mjest.spyOn[22m(console, 'warn').mockImplementation() and test that the warning occurs.
+2026-11-04T22:41:57.3034264Z 
+2026-11-04T22:41:57.3035413Z     [31mImmutableStateInvariantMiddleware took 51ms, which is more than the warning threshold of 32ms. 
+2026-11-04T22:41:57.3040488Z     If your state or actions are very large, you may want to disable the middleware as it might cause too much of a slowdown in development mode. See https://redux-toolkit.js.org/api/getDefaultMiddleware for instructions.
+2026-11-04T22:41:57.3041816Z     It is disabled in production builds, so you don't need to worry about that.[39m
+2026-11-04T22:41:57.3043168Z     [90m    at console.captureMessage [as warn] (/home/runner/work/grafana/grafana/node_modules/.pnpm/jest-fail-on-console@3.3.1/node_modules/jest-fail-on-console/index.js:83:25)[39m
+2026-11-04T22:41:57.3081684Z     [37m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+2026-11-04T22:41:57.3082031Z 
+2026-11-04T22:41:57.3082669Z       at flushUnexpectedConsoleCalls (node_modules/.pnpm/jest-fail-on-console@3.3.1/node_modules/jest-fail-on-console/index.js:48:13)
+2026-11-04T22:41:57.3083147Z 
+2026-11-04T22:41:57.3083154Z 
+2026-11-04T22:41:57.3086126Z Test Suites: 1 failed, 380 passed, 381 total
+2026-11-04T22:41:57.3086705Z Tests:       1 failed, 2 skipped, 4942 passed, 4945 total
+2026-11-04T22:41:57.3087283Z Snapshots:   75 passed, 75 total
+2026-11-04T22:41:57.3087737Z Time:        366.448 s
+2026-11-04T22:41:57.3088130Z Ran all test suites.
+2026-11-04T22:41:57.3355864Z [ELIFECYCLE] Command failed with exit code 1.
+2026-11-04T22:41:57.3394662Z ##[error]Process completed with exit code 1.
