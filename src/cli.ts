@@ -1,14 +1,11 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { extractFailures } from "./parser.js";
-import { analyzeFailure, collectLogSignals } from "./analysis.js";
-import { cleanLog } from "./log-cleaning.js";
+import { analyzeLog } from "./analyze-log.js";
 import { hasApiKey, llmEndpointHost, queryLlm } from "./llm.js";
 import { CustomRuleError, loadCustomRules } from "./custom-rules.js";
-import { groupFailures, GROUP_LIMITATION } from "./failure-grouping.js";
-import { toPublicDiagnostics } from "./public-output.js";
-import type { AnalysisResult, Rule, Verdict } from "./types.js";
+import { GROUP_LIMITATION } from "./failure-grouping.js";
+import type { AnalysisResult, Rule } from "./types.js";
 
 // The version of the `analyze --json` contract (docs/json-output.md). Bumped when a
 // field is removed, renamed or changes meaning. Version 2: failure counts, the
@@ -97,11 +94,6 @@ async function runAnalyze(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const { failures, diagnostics } = extractFailures(raw);
-  // The only form of a diagnostic that may be printed: never the internal one,
-  // whose text can hold anything extraction rejected. See public-output.ts.
-  const publicDiagnostics = toPublicDiagnostics(diagnostics);
-
   // The LLM step runs only when asked for. A configured key alone is not consent
   // to send CI log text to a hosted provider.
   const llmEnabled = values.llm;
@@ -117,22 +109,19 @@ async function runAnalyze(argv: string[]): Promise<void> {
     console.error("LLM: FLAKY_FINDER_API_KEY is set but --llm was not given, so the LLM step is off");
   }
 
-  const results: AnalysisResult[] = [];
-  for (const failure of failures) {
-    results.push(await analyzeFailure(failure, customRules, llmEnabled ? (f) => queryLlm(f) : null));
-  }
-  const unattributedSignals = collectLogSignals(cleanLog(raw).split("\n"), failures, results, customRules);
+  const {
+    failureCount,
+    results,
+    failureGroups,
+    summary,
+    unattributedSignals,
+    diagnostics: publicDiagnostics,
+  } = await analyzeLog(raw, {
+    customRules,
+    llm: llmEnabled ? (f) => queryLlm(f) : null,
+    includeWeakGroups: values["include-weak-groups"],
+  });
   const llmUnavailable = results.filter((r) => r.abstainReason === "llm-unavailable").length;
-
-  // Every verdict is always present (zero-filled), so a consumer never has
-  // to treat a missing key as zero.
-  const summary: Record<Verdict, number> = { ENVIRONMENT_SIGNAL_DETECTED: 0, SUSPECTED_REGRESSION: 0, UNVERIFIED: 0 };
-  for (const r of results) summary[r.verdict] += 1;
-
-  // A read-only view over `results` grouped by which rule decided their
-  // verdict — see failure-grouping.ts for what this does and doesn't
-  // establish. Never changes a result; always safe to compute.
-  const failureGroups = groupFailures(results, { includeWeak: values["include-weak-groups"] });
 
   if (values.json) {
     const output = {
@@ -151,7 +140,7 @@ async function runAnalyze(argv: string[]): Promise<void> {
     return;
   }
 
-  console.log(`Parsed ${failures.length} failure(s) from ${file}`);
+  console.log(`Parsed ${failureCount} failure(s) from ${file}`);
   if (rulesFile) console.log(`Custom rules: ${customRules.length} loaded from ${rulesFile} (checked before built-ins)`);
   console.log(llmEnabled ? "LLM fallback: enabled (--llm)\n" : "LLM fallback: disabled (rules-only mode)\n");
 
